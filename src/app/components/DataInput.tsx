@@ -1,7 +1,6 @@
-// src/components/DataInput.tsx
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useSimulationContext } from '../contexts/SimulationContext';
 import { DataRowComponent } from './DataRow';
 import { DataRow, createNewRow, MAX_COLUMN_NAME_LENGTH } from '../contexts/SimulationContext';
@@ -15,21 +14,21 @@ const ASSIGNMENT_COLUMN_WIDTH = '12';
 const ACTIONS_COLUMN_WIDTH = '12';
 
 export default function DataInput() {
-  const { 
-    data, 
-    setData, 
-    toggleAssignment, 
-    updateCell, 
-    deleteRow, 
+  const {
+    data,
+    setData,
+    toggleAssignment,
+    updateCell,
+    deleteRow,
     addRow,
-    undo, 
+    undo,
     redo,
     treatmentColumnName,
     controlColumnName,
     setTreatmentColumnName,
     setControlColumnName
   } = useSimulationContext();
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState(false);
@@ -50,10 +49,10 @@ export default function DataInput() {
         if (typeof text === 'string') {
           const rows = text.split('\n').map(row => {
             const [control, treatment, assignment] = row.split(',').map(Number);
-            return { 
+            return {
               control: isNaN(control) ? null : control,
-              treatment: isNaN(treatment) ? null : treatment, 
-              assignment: assignment === 1 ? 1 : 0 
+              treatment: isNaN(treatment) ? null : treatment,
+              assignment: assignment === 1 ? 1 : 0
             } as DataRow;
           }).filter(row => row.treatment !== null || row.control !== null);
           setData([...rows, createNewRow()]);
@@ -62,7 +61,6 @@ export default function DataInput() {
       reader.readAsText(file);
     }
   };
-  
 
   const fillEmptyCells = (effect: number) => {
     const newData = data.map(row => {
@@ -95,17 +93,6 @@ export default function DataInput() {
     return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   };
 
-  const memoizedUpdateCell = useCallback(updateCell, [updateCell]);
-  const memoizedToggleAssignment = useCallback(toggleAssignment, [toggleAssignment]);
-  const memoizedDeleteRow = useCallback(deleteRow, [deleteRow]);
-
-  const addDummyRow = useCallback((assignment: 0 | 1) => {
-    const newRowIndex = data.findIndex(row => row.isNewRow);
-    if (newRowIndex !== -1) {
-      memoizedUpdateCell(newRowIndex, assignment ? 'control' : 'treatment', assignment);
-    }
-  }, [data, memoizedUpdateCell]);
-
   const handleColumnNameChange = (column: 'treatment' | 'control', e: React.ChangeEvent<HTMLInputElement>) => {
     const trimmedValue = e.target.value.slice(0, MAX_COLUMN_NAME_LENGTH - (column === 'control' ? 10 : 0));
     if (column === 'treatment') {
@@ -123,10 +110,10 @@ export default function DataInput() {
         key={index}
         row={row}
         index={index}
-        updateCell={memoizedUpdateCell}
-        toggleAssignment={memoizedToggleAssignment}
-        activateNewRow={addDummyRow}
-        deleteRow={memoizedDeleteRow}
+        updateCell={updateCell}
+        toggleAssignment={toggleAssignment}
+        addNewRow={addRow}
+        deleteRow={deleteRow}
         isVisible={shouldIgnoreCollapse || !isCollapsed || index === 0 || index === data.length - 1}
         columnWidths={{
           index: INDEX_COLUMN_WIDTH,
@@ -137,22 +124,22 @@ export default function DataInput() {
         }}
       />
     ));
-  
+
     if (isCollapsed && !shouldIgnoreCollapse) {
       const expandButton = (
         <div key="expand-button" className="flex items-center justify-center h-12 cursor-pointer border-b border-light-background-tertiary dark:border-dark-background-tertiary" onClick={() => setIsCollapsed(false)}>
           <button className="flex items-center space-x-2 text-light-primary dark:text-dark-primary hover:text-light-primary-dark dark:hover:text-dark-primary-light focus:outline-none transition-colors duration-200">
-            <ExpandIcon/>
+            <ExpandIcon />
             <span>Expand {data.length - 2} hidden rows</span>
           </button>
         </div>
       );
-  
+
       rows = [rows[0], expandButton, rows[rows.length - 1]];
     }
-  
+
     return rows;
-  }, [data, isCollapsed, memoizedUpdateCell, memoizedToggleAssignment, memoizedDeleteRow, addDummyRow]);
+  }, [data, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow]);
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary">
@@ -232,7 +219,7 @@ export default function DataInput() {
 interface ActionButtonProps {
   onClick: () => void;
   icon: React.ReactNode;
-  label?: string; // Make label optional
+  label?: string;
   primary?: boolean;
 }
 
@@ -292,7 +279,7 @@ interface AverageDisplayProps {
 
 function AverageDisplay({ label, value }: AverageDisplayProps) {
   const colorClass = label === 'Control' ? "text-light-primary dark:text-dark-primary" : "text-light-accent dark:text-dark-accent";
-  
+
   return (
     <span className={`w-[calc(50%-20px)] text-center font-medium ${colorClass} break-words`}>
       Avg: {value.toFixed(2)}

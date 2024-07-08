@@ -37,7 +37,7 @@ const FlapOverlay: React.FC<FlapOverlayProps> = ({
       
       <motion.div
         className="absolute w-full top-0 h-full pointer-events-none"
-        style={{ transformStyle: 'preserve-3d', perspective: '1000px' }}
+        style={{ transformStyle: 'preserve-3d', transformPerspective: '500px' }}
         initial={{ rotateY: isRight ? 0 : 180 }}
         animate={{ rotateY: isRight ? 0 : 180 }}
         transition={hasLoaded ? { type: "tween", ease: "easeInOut", duration: 0.7 } : { duration: 0 }}
@@ -47,7 +47,7 @@ const FlapOverlay: React.FC<FlapOverlayProps> = ({
         {bothSides && (
             <motion.div
             className="absolute w-full top-0 h-full pointer-events-none"
-            style={{ transformStyle: 'preserve-3d', perspective: '1000px' }}
+            style={{ transformStyle: 'preserve-3d', transformPerspective: '500px' }}
             initial={{ rotateY: !isRight ? 0 : 180 }}
             animate={{ rotateY: !isRight ? 0 : 180 }}
             transition={hasLoaded ? { type: "tween", ease: "easeInOut", duration: 0.7 } : { duration: 0 }}

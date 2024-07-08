@@ -57,7 +57,7 @@ export const UploadIcon = () => (
   
   export const MagicWandIcon = () => {
     return (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg fill="none" viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
       </svg>
     );
@@ -65,7 +65,7 @@ export const UploadIcon = () => (
   
   export const EditIcon = () => {
     return (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg fill="none" viewBox="0 0 24 24" className="ml-2 h-5 w-5" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
       </svg>
     );

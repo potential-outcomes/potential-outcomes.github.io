@@ -51,7 +51,7 @@ interface DataRowProps {
   index: number;
   updateCell: (rowIndex: number, field: 'treatment' | 'control', value: number | null) => void;
   toggleAssignment: (rowIndex: number) => void;
-  activateNewRow: (assignment: 0 | 1) => void;
+  addRow: () => void;
   deleteRow: (rowIndex: number) => void;
   isVisible: boolean;
   columnWidths: {
@@ -68,7 +68,7 @@ export const DataRowComponent: React.FC<DataRowProps> = ({
   index, 
   updateCell, 
   toggleAssignment, 
-  activateNewRow, 
+  addRow, 
   deleteRow,
   isVisible,
   columnWidths
@@ -77,7 +77,7 @@ export const DataRowComponent: React.FC<DataRowProps> = ({
 
   const activateRow = (assignment: 0 | 1) => {
     if (row.isNewRow) {
-      activateNewRow(assignment);
+      addRow();
     }
   };
 
@@ -134,11 +134,7 @@ export const DataRowComponent: React.FC<DataRowProps> = ({
           isAssigned={row.assignment === 1}
           isNewRow={row.isNewRow || false}
           onChange={() => {
-            if (row.isNewRow) {
-              activateNewRow(row.assignment === 0 ? 1 : 0);
-            } else {
-              toggleAssignment(index);
-            }
+            toggleAssignment(index);
           }}
         />
       </div>
@@ -153,7 +149,7 @@ export const DataRowComponent: React.FC<DataRowProps> = ({
       )}
       {row.isNewRow && (
         <button 
-          onClick={() => activateNewRow(row.assignment)}
+          onClick={() => addRow()}
           className={`w-${columnWidths.actions} flex-shrink-0 text-light-text-tertiary dark:text-dark-text-tertiary hover:text-light-success dark:hover:text-dark-success focus:outline-none focus:ring-2 focus:ring-light-success dark:focus:ring-dark-success rounded-full p-1 transition-colors duration-200 flex justify-center`}
           aria-label="Add row"
         >
