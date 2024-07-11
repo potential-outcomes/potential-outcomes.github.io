@@ -1,72 +1,207 @@
 // components/Icons.tsx
 import React from 'react';
+import PropTypes from 'prop-types';
 
-export const UndoIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+interface IconProps {
+  size?: number;
+  color?: string;
+  className?: string;
+  onClick?: (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => void;
+}
+
+const SvgIcon: React.FC<IconProps & React.SVGProps<SVGSVGElement>> = ({ 
+  size = 5, 
+  color = 'currentColor', 
+  className = '', 
+  onClick,
+  children, 
+  ...props 
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`h-${size} w-${size} ${className}`}
+    onClick={onClick}
+    {...props}
+  >
+    {children}
   </svg>
 );
 
-export const RedoIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M12.293 3.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 9H9a5 5 0 00-5 5v2a1 1 0 11-2 0v-2a7 7 0 017-7h5.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-  </svg>
+SvgIcon.propTypes = {
+  size: PropTypes.number,
+  color: PropTypes.string,
+  className: PropTypes.string,
+  onClick: PropTypes.func,
+};
+
+export const Undo: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M9 14L4 9L9 4" />
+    <path d="M4 9H15C18.3137 9 21 11.6863 21 15C21 18.3137 18.3137 21 15 21H12" />
+  </SvgIcon>
 );
 
-export const ExpandIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M5 10 L10 5 L15 10 M5 15 L10 20 L15 15" />
-  </svg>
+export const Redo: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M15 14L20 9L15 4" />
+    <path d="M20 9H9C5.68629 9 3 11.6863 3 15C3 18.3137 5.68629 21 9 21H12" />
+  </SvgIcon>
 );
 
-export const CollapseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M5 5 L10 10 L15 5 M5 15 L10 10 L15 15" />
-  </svg>
+
+export const Expand: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M18 9L12 3L6 9" />
+    <path d="M18 15L12 21L6 15" />
+  </SvgIcon>
 );
 
-export const DeleteIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-  </svg>
+export const Collapse: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M18 4L12 10L6 4" />
+    <path d="M18 20L12 14L6 20" />
+  </SvgIcon>
 );
 
-export const AddIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-  </svg>
+export const Close: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M18 6L6 18M6 6l12 12" />
+  </SvgIcon>
 );
 
-export const MoonIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-    </svg>
-  );
-  
-export const SunIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-    </svg>
+export const Add: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M12 5v14M5 12h14" />
+  </SvgIcon>
 );
 
-export const UploadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-    </svg>
-  );
-  
-  export const MagicWandIcon = () => {
-    return (
-      <svg fill="none" viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-      </svg>
-    );
-  }
-  
-  export const EditIcon = () => {
-    return (
-      <svg fill="none" viewBox="0 0 24 24" className="ml-2 h-5 w-5" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-      </svg>
-    );
-  }
+export const Moon: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+  </SvgIcon>
+);
+
+export const Sun: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <circle cx="12" cy="12" r="5" />
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" />
+    <line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+  </SvgIcon>
+);
+
+export const Upload: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+  </SvgIcon>
+);
+
+export const MagicWand: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5" />
+  </SvgIcon>
+);
+
+export const Edit: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </SvgIcon>
+);
+
+export const Cancel: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </SvgIcon>
+);
+
+export const Flask: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M6 22a2 2 0 002 2h8a2 2 0 002-2l-3-16H9L6 22z" />
+    <path d="M9 2v3h6V2H9z" />
+  </SvgIcon>
+);
+
+export const Play: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </SvgIcon>
+);
+
+export const Pause: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <rect x="6" y="4" width="4" height="16" />
+    <rect x="14" y="4" width="4" height="16" />
+  </SvgIcon>
+);
+
+export const Continue: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <rect x="8" y="4" width="3" height="16" />
+    <polygon points="15 4 23 12 15 20 15 4" />
+  </SvgIcon>
+);
+
+export const Clear: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M3 6h18" />
+    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </SvgIcon>
+);
+
+export const RewindPlay: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    {/* Play triangle */}
+    <polygon points="8 7 16 12 8 17 8 7" />
+    
+    {/* Circular arrow */}
+    <path 
+      d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10c4.04 0 7.54-2.4 9.13-5.85" 
+      fill="none" 
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    
+    {/* Arrow head */}
+    <polygon points="22 12 19 8.5 19 15.5" />
+  </SvgIcon>
+);
+// Export all icons in a single object with professional names
+export const Icons = {
+  Undo,
+  Redo,
+  Expand,
+  Collapse,
+  Close,
+  Add,
+  Moon,
+  Sun,
+  Upload,
+  MagicWand,
+  Edit,
+  Cancel,
+  Flask,
+  Play,
+  Pause,
+  Continue,
+  Clear,
+  RewindPlay,
+};
+
+export default Icons;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTheme } from './ThemeProvider';
-import { MoonIcon, SunIcon } from './Icons';
+import { Icons } from './Icons';
 
 interface TopBarProps {
   links: Array<{ href: string; label: string }>;
@@ -32,7 +32,7 @@ export default function TopBar({ links }: TopBarProps) {
             className="p-2 rounded-full bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background hover:bg-light-primary-dark dark:hover:bg-dark-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-light-primary-dark dark:focus:ring-dark-primary-light focus:ring-opacity-50"
             aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           >
-            {theme === 'light' ? <MoonIcon/> : <SunIcon/>}
+            {theme === 'light' ? <Icons.Moon /> : <Icons.Sun/>}
           </button>
         </div>
       </div>
