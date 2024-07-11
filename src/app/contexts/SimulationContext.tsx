@@ -165,8 +165,8 @@ function useAsyncState<T>(initialState: T): [T, (newState: T | ((prevState: T) =
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<UserDataState>({
     rows: [createNewRow(2, 0)],
-    controlColumnIndex: 1,
-    columnNames: ["Treatment", "Control"]
+    controlColumnIndex: 0,
+    columnNames: ["Control", "Treatment"]
   });
   const [simulationSpeed, setSimulationSpeedState] = useState(50);
   const [selectedTestStatistic, setSelectedTestStatisticState] = useState<TestStatisticType>(TestStatisticType.DifferenceInMeans);
