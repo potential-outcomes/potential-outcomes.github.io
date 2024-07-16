@@ -242,6 +242,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
       return prevData;
     });
+    console.log('Use Data:', userData.rows);
   }, []);
 
   const toggleAssignment = useCallback((rowIndex: number) => {

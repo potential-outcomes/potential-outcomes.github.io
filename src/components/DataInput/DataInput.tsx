@@ -11,13 +11,15 @@ import { ActionButton } from './ActionButton';
 import { ColumnHeader } from './ColumnHeader';
 import { TreatmentEffectInput } from './TreatmentEffectInput';
 
-// Update constant name
 export const COLUMN_PROPORTIONS = {
   index: 1,
   data: 6,
   assignment: 2,
   actions: 1
 };
+
+type AnimationType = 'flap' | 'slider';
+type Mode = 'cover' | 'highlight';
 
 export default function DataInput() {
   const {
@@ -39,10 +41,14 @@ export default function DataInput() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
+  
+  // New state variables for dev toggles
+  const [mode, setMode] = useState<Mode>('highlight');
+  const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
   const dataToDisplay = isSimulating && simulationResults && simulationResults.length > 0
-  ? simulationResults[simulationResults.length - 1].rows
-  : userData.rows;
+    ? simulationResults[simulationResults.length - 1].rows
+    : userData.rows;
 
   useEffect(() => {
     if (!isSimulating && (userData.rows.length === 0 || !userData.rows[userData.rows.length - 1].data.some(cell => cell === null))) {
@@ -136,6 +142,8 @@ export default function DataInput() {
         controlColumnIndex={userData.controlColumnIndex}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
         isCollapsed={isCollapsed}
+        mode={mode}
+        animationType={animationType}
       />
     ));
 
@@ -153,75 +161,106 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow, isSimulating]);
+  }, [dataToDisplay, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow, isSimulating, mode, animationType]);
 
-return (
-  <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-2xl font-semibold">Data</h2>
-      <div className="flex space-x-2">
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleFileUpload}
-          ref={fileInputRef}
-          className="hidden"
-        />
-        <ActionButton
-          onClick={() => fileInputRef.current?.click()}
-          icon={<Icons.Upload />}
-          label="Load from .csv"
-          primary
-        />
+  // New toggle functions for dev controls
+  const toggleMode = () => {
+    setMode(prevMode => prevMode === 'highlight' ? 'cover' : 'highlight');
+  };
+
+  const toggleAnimationType = () => {
+    setAnimationType(prevType => {
+      switch (prevType) {
+        case 'flap': return 'slider';
+        case 'slider': return 'flap';
+      }
+    });
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-semibold">Data</h2>
+        <div className="flex space-x-2">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleFileUpload}
+            ref={fileInputRef}
+            className="hidden"
+          />
+          <ActionButton
+            onClick={() => fileInputRef.current?.click()}
+            icon={<Icons.Upload />}
+            label="Load from .csv"
+            primary
+          />
+        </div>
       </div>
-    </div>
-    <div className="bg-light-background dark:bg-dark-background rounded-lg">
-      <div className="flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
-        <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
-        <div className="flex-grow flex">
-          {userData.columnNames.map((name, index) => (
-            <div key={index} className="flex-1">
-              <ColumnHeader
-                isEditing={editingColumnNames[index]}
-                value={name}
-                onChange={(e) => handleColumnNameChange(index, e)}
-                onBlur={() => {
-                  const newEditingColumnNames = [...editingColumnNames];
-                  newEditingColumnNames[index] = false;
-                  setEditingColumnNames(newEditingColumnNames);
-                }}
-                onClick={() => {
-                  if (isSimulating) return;
-                  const newEditingColumnNames = [...editingColumnNames];
-                  newEditingColumnNames[index] = true;
-                  setEditingColumnNames(newEditingColumnNames);
-                }}
-                color={index === userData.controlColumnIndex ? 'text-light-primary dark:text-dark-primary' : 'text-light-accent dark:text-dark-accent'}
+
+      {/* Dev toggles */}
+      <div className="mb-4 flex space-x-4">
+        <button
+          onClick={toggleMode}
+          className="px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded"
+        >
+          Mode: {mode}
+        </button>
+        <button
+          onClick={toggleAnimationType}
+          className="px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded"
+        >
+          Animation: {animationType}
+        </button>
+      </div>
+
+      <div className="bg-light-background dark:bg-dark-background rounded-lg">
+        <div className="flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
+          <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
+          <div className="flex-grow flex">
+            {userData.columnNames.map((name, index) => (
+              <div key={index} className="flex-1">
+                <ColumnHeader
+                  isEditing={editingColumnNames[index]}
+                  value={name}
+                  onChange={(e) => handleColumnNameChange(index, e)}
+                  onBlur={() => {
+                    const newEditingColumnNames = [...editingColumnNames];
+                    newEditingColumnNames[index] = false;
+                    setEditingColumnNames(newEditingColumnNames);
+                  }}
+                  onClick={() => {
+                    if (isSimulating) return;
+                    const newEditingColumnNames = [...editingColumnNames];
+                    newEditingColumnNames[index] = true;
+                    setEditingColumnNames(newEditingColumnNames);
+                  }}
+                  color={index === userData.controlColumnIndex ? 'text-light-primary dark:text-dark-primary' : 'text-light-accent dark:text-dark-accent'}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div>
+          <div className="w-14 flex-shrink-0 flex justify-end items-center space-x-1 pr-1">
+            <Tooltip content="Undo (Cmd+Z / Ctrl+Z)">
+              <Icons.Undo 
+                className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
+                onClick={undo}
               />
-            </div>
-          ))}
+            </Tooltip>
+            <Tooltip content="Redo (Cmd+Shift+Z / Ctrl+Y)">
+              <Icons.Redo 
+                className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
+                onClick={redo}
+              />
+            </Tooltip>
+          </div>
         </div>
-        <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div>
-        <div className="w-14 flex-shrink-0 flex justify-end items-center space-x-1 pr-1">
-          <Tooltip content="Undo (Cmd+Z / Ctrl+Z)">
-            <Icons.Undo 
-              className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
-              onClick={undo}
-            />
-          </Tooltip>
-          <Tooltip content="Redo (Cmd+Shift+Z / Ctrl+Y)">
-            <Icons.Redo 
-              className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
-              onClick={redo}
-            />
-          </Tooltip>
+        <div className="max-h-[60vh] overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
+          {renderRows}
         </div>
+        <TreatmentEffectInput onApply={applyTreatmentEffect} />
       </div>
-      <div className="max-h-[60vh] overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
-        {renderRows}
-      </div>
-      <TreatmentEffectInput onApply={applyTreatmentEffect} />
     </div>
-  </div>
-);
+  );
 }

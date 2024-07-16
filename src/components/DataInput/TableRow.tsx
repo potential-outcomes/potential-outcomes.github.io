@@ -2,10 +2,12 @@
 'use client';
 
 import React from 'react';
-import { DataRow } from '../../contexts/SimulationContext';
+import { DataRow } from '@/types/types';
 import { Icons } from '../common/Icons';
-import FlapOverlay from '../common/Flap';
+import Overlay from './Overlay';
 
+type AnimationType = 'flap' | 'slider';
+type Mode = 'cover' | 'highlight';
 
 interface InputCellProps {
   value: number | null;
@@ -45,6 +47,8 @@ interface TableRowProps {
   controlColumnIndex: number;
   toggleCollapse?: () => void;
   isCollapsed?: boolean;
+  mode: Mode;
+  animationType: AnimationType;
 }
 
 export const TableRow: React.FC<TableRowProps> = ({ 
@@ -57,8 +61,18 @@ export const TableRow: React.FC<TableRowProps> = ({
   isUnactivated,
   controlColumnIndex,
   toggleCollapse,
-  isCollapsed
+  isCollapsed,
+  mode,
+  animationType
 }) => {
+  const getCardSide = (assignment: number, mode: Mode) => {
+    if (mode === 'highlight') {
+      return assignment === 0 ? 'left' : 'right';
+    } else if (mode === 'cover') {
+      return assignment === 0 ? 'right' : 'left';
+    }
+  }
+
   return (
     <div className="flex items-stretch w-full h-14 py-2 bg-light-background-primary dark:bg-dark-background-primary">
       {/* Index Column */}
@@ -78,8 +92,8 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Data Column */}
       <div className="flex-grow h-full">
-        <FlapOverlay
-          side={isUnactivated ? 'none' : (row.assignment === 0 ? 'left' : 'right')}
+        <Overlay
+          side={isUnactivated ? 'none' : getCardSide(row.assignment, mode)}
           leftChild={
             <InputCell
               value={row.data[0]}
@@ -94,6 +108,8 @@ export const TableRow: React.FC<TableRowProps> = ({
               placeholder={controlColumnIndex === 1 ? "Control" : "Treatment"}
             />
           }
+          mode={mode}
+          animationType={animationType}
         />
       </div>
 
@@ -104,7 +120,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           className={`w-6 h-6 rounded-md transition-colors duration-300
             ${isUnactivated 
               ? 'bg-light-background-tertiary dark:bg-dark-background-tertiary' 
-              : row.assignment === 0
+              : row.assignment === 1
                 ? 'bg-light-accent dark:bg-dark-accent' 
                 : 'bg-light-primary dark:bg-dark-primary'}
             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-primary dark:focus:ring-dark-primary`}
