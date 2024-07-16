@@ -1,7 +1,7 @@
 // src/app/simulation/layout.tsx
-import { SimulationProvider } from '../contexts/SimulationContext';
-import DataInput from '../components/DataInput/DataInput';
-import SimulationDisplay from '../components/SimulationDisplay/SimulationDisplay';
+import { SimulationProvider } from '../../../contexts/SimulationContext';
+import DataInput from '../../../components/DataInput/DataInput';
+import SimulationDisplay from '../../../components/SimulationDisplay/SimulationDisplay';
 
 export default function SimulationLayout({
   children,

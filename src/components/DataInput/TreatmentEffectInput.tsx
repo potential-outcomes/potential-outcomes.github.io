@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Tooltip } from '../Tooltip';
-import { Icons } from '../Icons';
+import { Tooltip } from '../common/Tooltip';
+import { Icons } from '../common/Icons';
 
 interface TreatmentEffectInputProps {
     onApply: (effect: number) => void;

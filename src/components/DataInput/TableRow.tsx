@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { DataRow } from '../../contexts/SimulationContext';
-import { Icons } from '../Icons';
-import FlapOverlay from '../Flap';
+import { Icons } from '../common/Icons';
+import FlapOverlay from '../common/Flap';
 
 
 interface InputCellProps {

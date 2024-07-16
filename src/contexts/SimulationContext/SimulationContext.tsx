@@ -3,29 +3,22 @@
 'use client';
 
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
-import { TestStatisticFunction, testStatistics, TestStatisticType } from './testStatistics';
+import { testStatistics } from '@/lib/testStatistics';
 
-export interface DataRow {
-  data: (number | null)[];
-  assignment: number;
-}
+import { DataRow, ExperimentalTestStatistic, UserDataState } from '@/types/types';
 
-export interface UserDataState {
-  rows: DataRow[];
-  controlColumnIndex: number;
-  columnNames: string[];
-}
+
 
 export class SimulationResult {
   rows: DataRow[];
-  private _testStatistics: { [key in TestStatisticType]?: number };
+  private _testStatistics: { [key in ExperimentalTestStatistic]?: number };
 
-  constructor(rows: DataRow[], initialTestStatistics: { [key in TestStatisticType]?: number } = {}) {
+  constructor(rows: DataRow[], initialTestStatistics: { [key in ExperimentalTestStatistic]?: number } = {}) {
     this.rows = rows;
     this._testStatistics = initialTestStatistics;
   }
 
-  getTestStatistic(testStatType: TestStatisticType): number {
+  getTestStatistic(testStatType: ExperimentalTestStatistic): number {
     if (this._testStatistics[testStatType] === undefined) {
       this._testStatistics[testStatType] = testStatistics[testStatType].function(this.rows);
     }
@@ -39,13 +32,13 @@ export type PValueType = 'two-tailed' | 'left-tailed' | 'right-tailed';
 // Custom setter type with validation
 type ValidatedSetter<T> = (value: T | ((prev: T) => T)) => void;
 
-interface SimulationContextType {
+export interface SimulationContextType {
   // Mutable states
   userData: UserDataState;
   simulationSpeed: number;
   setSimulationSpeed: ValidatedSetter<number>;
-  selectedTestStatistic: TestStatisticType;
-  setSelectedTestStatistic: ValidatedSetter<TestStatisticType>;
+  selectedTestStatistic: ExperimentalTestStatistic;
+  setSelectedTestStatistic: ValidatedSetter<ExperimentalTestStatistic>;
   totalSimulations: number;
   setTotalSimulations: ValidatedSetter<number>;
   pValueType: PValueType;
@@ -76,11 +69,11 @@ interface SimulationContextType {
   };
 }
 
-const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
+export const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
 // Validation functions
 const validateSimulationSpeed = (speed: number): boolean => speed >= 1 && speed <= 100;
-const validateSelectedTestStatistic = (stat: TestStatisticType): boolean => Object.values(TestStatisticType).includes(stat);
+const validateSelectedTestStatistic = (stat: ExperimentalTestStatistic): boolean => Object.values(ExperimentalTestStatistic).includes(stat);
 const validateTotalSimulations = (total: number): boolean => total >= 1 && total <= 10000;
 const validatePValueType = (type: PValueType): boolean => ['two-tailed', 'left-tailed', 'right-tailed'].includes(type);
 
@@ -111,7 +104,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 const calculatePValue = (
   originalTestStatistic: number,
   simulationResults: SimulationResult[],
-  testStatistic: TestStatisticType,
+  testStatistic: ExperimentalTestStatistic,
   pValueType: PValueType
 ): number => {
   const totalSimulations = simulationResults.length;
@@ -169,7 +162,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     columnNames: ["Control", "Treatment"]
   });
   const [simulationSpeed, setSimulationSpeedState] = useState(50);
-  const [selectedTestStatistic, setSelectedTestStatisticState] = useState<TestStatisticType>(TestStatisticType.DifferenceInMeans);
+  const [selectedTestStatistic, setSelectedTestStatisticState] = useState<ExperimentalTestStatistic>(ExperimentalTestStatistic.DifferenceInMeans);
   const [totalSimulations, setTotalSimulationsState] = useState(1000);
   const [pValueType, setPValueTypeState] = useState<PValueType>('two-tailed');
   const [simulationResults, setSimulationResults] = useState<SimulationResult[] | null>(null);
@@ -438,10 +431,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 }
 
 // useSimulationContext hook
-export const useSimulationContext = () => {
-  const context = useContext(SimulationContext);
-  if (context === undefined) {
-    throw new Error('useSimulationContext must be used within a SimulationProvider');
-  }
-  return context;
-};
+// export const useSimulationContext = () => {
+//   const context = useContext(SimulationContext);
+//   if (context === undefined) {
+//     throw new Error('useSimulationContext must be used within a SimulationProvider');
+//   }
+//   return context;
+// };

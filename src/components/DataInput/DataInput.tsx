@@ -2,10 +2,11 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { UserDataState, useSimulationContext } from '../../contexts/SimulationContext';
+import { useSimulationContext } from '../../contexts/SimulationContext';
+import { UserDataState } from '@/types/types';
 import TableRow from './TableRow';
-import { Icons } from '../Icons';
-import { Tooltip } from '../Tooltip';
+import { Icons } from '../common/Icons';
+import { Tooltip } from '../common/Tooltip';
 import { ActionButton } from './ActionButton';
 import { ColumnHeader } from './ColumnHeader';
 import { TreatmentEffectInput } from './TreatmentEffectInput';

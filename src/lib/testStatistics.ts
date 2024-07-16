@@ -1,19 +1,8 @@
-import { DataRow } from '../contexts/SimulationContext';
+import { DataRow, ExperimentalTestStatistic, TestStatisticMeta } from '../types/types';
 import { sum } from 'mathjs';
-
-export enum TestStatisticType {
-  DifferenceInMeans = 'differenceInMeans',
-  WilcoxonRankSum = 'wilcoxonRankSum'
-}
 
 export interface TestStatisticFunction {
   (data: DataRow[]): number;
-}
-
-export interface TestStatisticMeta {
-  name: string;
-  function: TestStatisticFunction;
-  supportsMultipleTreatments: boolean;
 }
 
 const rank = (values: number[]): number[] => {
@@ -83,13 +72,13 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   return Math.min(U1, U2);
 };
 
-export const testStatistics: Record<TestStatisticType, TestStatisticMeta> = {
-  [TestStatisticType.DifferenceInMeans]: {
+export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta> = {
+  [ExperimentalTestStatistic.DifferenceInMeans]: {
     name: "Difference in Means",
     function: differenceInMeans,
     supportsMultipleTreatments: false
   },
-  [TestStatisticType.WilcoxonRankSum]: {
+  [ExperimentalTestStatistic.WilcoxonRankSum]: {
     name: "Wilcoxon Rank-Sum",
     function: wilcoxonRankSum,
     supportsMultipleTreatments: false

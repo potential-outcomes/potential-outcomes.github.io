@@ -1,7 +1,7 @@
 // ColumnHeader.tsx
 import React from 'react';
-import { Icons } from '../Icons';
-import { Tooltip } from '../Tooltip';
+import { Icons } from '../common/Icons';
+import { Tooltip } from '../common/Tooltip';
 
 interface ColumnHeaderProps {
   isEditing: boolean;

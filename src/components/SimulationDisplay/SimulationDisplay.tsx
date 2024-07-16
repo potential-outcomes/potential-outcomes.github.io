@@ -2,11 +2,12 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useSimulationContext, SimulationResult } from '../../contexts/SimulationContext';
-import { testStatistics, TestStatisticType } from '../../contexts/testStatistics';
-import { Icons } from '../Icons';
+import { useSimulationContext, SimulationResult } from '@/contexts/SimulationContext';
+import { ExperimentalTestStatistic } from '@/types/types';
+import { testStatistics } from '../../lib/testStatistics';
+import { Icons } from '../common/Icons';
 import dynamic from 'next/dynamic';
-import { useTheme } from '../ThemeProvider';
+import { useTheme } from '../common/ThemeProvider';
 
 import { PlotParams } from 'react-plotly.js';
 import { Data, Layout } from 'plotly.js';
@@ -162,7 +163,7 @@ export default function SimulationDisplay() {
               <select
                 id="testStatistic"
                 value={selectedTestStatistic}
-                onChange={(e) => setSelectedTestStatistic(e.target.value as TestStatisticType)}
+                onChange={(e) => setSelectedTestStatistic(e.target.value as ExperimentalTestStatistic)}
                 className="flex-grow border w-full rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
               >
                 {Object.entries(testStatistics).map(([key, { name }]) => (
