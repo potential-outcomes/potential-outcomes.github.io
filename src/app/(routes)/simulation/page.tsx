@@ -43,7 +43,7 @@ export default function SimulationPage() {
         </div>
       ) : (
         <div className="flex flex-col h-screen p-3 bg-light-background-secondary dark:bg-dark-background-secondary">
-          <div className="flex flex-col lg:flex-row gap-4 mb-4 h-3/5">
+          <div className="flex flex-col lg:flex-row gap-4 mb-4 h-1/2">
             <div className="w-full lg:w-1/2 h-full">
               <div className="bg-light-background dark:bg-dark-background shadow-lg rounded-xl p-4 border border-light-background-tertiary dark:border-dark-background-tertiary h-full overflow-auto">
                 <DataInput />
@@ -55,7 +55,7 @@ export default function SimulationPage() {
               </div>
             </div>
           </div>
-          <div className="flex-grow h-2/5">
+          <div className="flex-grow h-1/2">
             <div className="bg-light-background dark:bg-dark-background shadow-lg rounded-xl p-4 border border-light-background-tertiary dark:border-dark-background-tertiary h-full">
               <PlotDisplay />
             </div>

@@ -82,7 +82,7 @@ export const PlotDisplay: React.FC = () => {
   const plotData = calculatePlotData(simulationData, observedStatistic || 0, theme);
 
   return (
-    <div className="mb-4" style={{ width: '100%', height: '60vh' }}>
+    <div className="mb-4" style={{ width: '100%', height: '100%' }}>
       <PlotlyPlot
         data={plotData}
         layout={plotLayout}
