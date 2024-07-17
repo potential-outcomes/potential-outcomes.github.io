@@ -63,9 +63,10 @@ export default function DataInput() {
 
   const [pulsate, setPulsate] = useState(false);
 
-  const dataToDisplay = useMemo(() => {
+  const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
+      // Create a dummy row with the same structure as other rows
       const dummyRow = {
         data: new Array(lastSimulationResult[0].data.length).fill(null),
         assignment: 0
@@ -74,7 +75,7 @@ export default function DataInput() {
     } else {
       return userData.rows;
     }
-  }, [isSimulating, simulationResults, userData.rows]);
+  })();
 
   useEffect(() => {
     if (!isSimulating && (userData.rows.length === 0 || !userData.rows[userData.rows.length - 1].data.some(cell => cell === null))) {
@@ -194,7 +195,7 @@ export default function DataInput() {
         toggleAssignment={toggleAssignment}
         addRow={addRow}
         deleteRow={deleteRow}
-        isUnactivated={!isSimulating && index === dataToDisplay.length - 1}
+        isUnactivated={index === dataToDisplay.length - 1}
         controlColumnIndex={userData.controlColumnIndex}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
         isCollapsed={isCollapsed}
@@ -261,7 +262,7 @@ export default function DataInput() {
       </div>
   
       <motion.div 
-        className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
+         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
         transition={{ duration: 0.25 }}
       >
@@ -317,15 +318,12 @@ export default function DataInput() {
             </Tooltip>
           </div>
         </div>
-        <div className="overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
-          {renderRows.slice(0, -1)}
+        <div className="flex-grow overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
+          {renderRows}
         </div>
         <div className="flex-shrink-0">
-          {renderRows[renderRows.length - 1]}
           <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
           <TreatmentEffectInput onApply={applyTreatmentEffect} />
-        </div>
-        <div className="flex-grow">
         </div>
       </motion.div>
     </div>

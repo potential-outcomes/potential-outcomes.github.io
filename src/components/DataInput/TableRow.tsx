@@ -75,7 +75,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   }
 
   return (
-    <div className="flex items-stretch w-full h-14 py-2 bg-light-background-primary dark:bg-dark-background-primary">
+    <div className={`flex items-stretch w-full h-14 py-2 bg-light-background dark:bg-dark-background ${isUnactivated ? 'sticky bottom-0' : ''}`}>
       {/* Index Column */}
       <div className="flex items-center justify-center w-12 flex-shrink-0 text-light-text-secondary dark:text-dark-text-secondary">
         {isUnactivated && toggleCollapse ? (
