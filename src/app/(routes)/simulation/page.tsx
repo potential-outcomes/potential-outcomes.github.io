@@ -56,9 +56,7 @@ export default function SimulationPage() {
             </div>
           </div>
           <div className="flex-grow h-1/2">
-            <div className="bg-light-background dark:bg-dark-background shadow-lg rounded-xl p-4 border border-light-background-tertiary dark:border-dark-background-tertiary h-full">
-              <PlotDisplay />
-            </div>
+            <PlotDisplay />
           </div>
         </div>
       )}
