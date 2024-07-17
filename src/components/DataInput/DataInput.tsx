@@ -63,9 +63,18 @@ export default function DataInput() {
 
   const [pulsate, setPulsate] = useState(false);
 
-  const dataToDisplay = isSimulating && simulationResults && simulationResults.length > 0
-    ? simulationResults[simulationResults.length - 1].rows
-    : userData.rows;
+  const dataToDisplay = useMemo(() => {
+    if (isSimulating && simulationResults && simulationResults.length > 0) {
+      const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
+      const dummyRow = {
+        data: new Array(lastSimulationResult[0].data.length).fill(null),
+        assignment: 0
+      };
+      return [...lastSimulationResult, dummyRow];
+    } else {
+      return userData.rows;
+    }
+  }, [isSimulating, simulationResults, userData.rows]);
 
   useEffect(() => {
     if (!isSimulating && (userData.rows.length === 0 || !userData.rows[userData.rows.length - 1].data.some(cell => cell === null))) {
