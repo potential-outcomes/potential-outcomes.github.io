@@ -219,8 +219,8 @@ export default function DataInput() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary">
-      <div className="flex justify-between items-center mb-4">
+    <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
+      <div className="flex-shrink-0 flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold">Data</h2>
         <div className="flex space-x-2">
           <button
@@ -252,7 +252,7 @@ export default function DataInput() {
       </div>
   
       <motion.div 
-        className={`bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
+        className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
         transition={{ duration: 0.25 }}
       >
@@ -267,7 +267,7 @@ export default function DataInput() {
             transition={{ duration: 0.25 }}
           />
         )}
-        <div className="flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
+        <div className="flex-shrink-0 flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
           <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
           <div className="flex-grow flex">
             {userData.columnNames.map((name, index) => (
@@ -308,11 +308,16 @@ export default function DataInput() {
             </Tooltip>
           </div>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
-          {renderRows}
+        <div className="overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
+          {renderRows.slice(0, -1)}
         </div>
-        <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
-        <TreatmentEffectInput onApply={applyTreatmentEffect} />
+        <div className="flex-shrink-0">
+          {renderRows[renderRows.length - 1]}
+          <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
+          <TreatmentEffectInput onApply={applyTreatmentEffect} />
+        </div>
+        <div className="flex-grow">
+        </div>
       </motion.div>
     </div>
   );
