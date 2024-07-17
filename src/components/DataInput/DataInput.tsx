@@ -3,7 +3,7 @@
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useSimulationContext } from '../../contexts/SimulationContext';
-import { UserDataState } from '@/types/types';
+import { UserDataState, DataRow, ExperimentalTestStatistic } from '@/types/types';
 import TableRow from './TableRow';
 import { Icons } from '../common/Icons';
 import { Tooltip } from '../common/Tooltip';
@@ -20,6 +20,21 @@ export const COLUMN_PROPORTIONS = {
 
 type AnimationType = 'flap' | 'slider';
 type Mode = 'cover' | 'highlight';
+
+const ColumnAverages: React.FC<{ averages: number[], columnNames: string[] }> = ({ averages, columnNames }) => (
+  <div className="flex items-stretch h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-t-2 border-light-primary dark:border-dark-primary">
+    <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">Avg</div>
+    <div className="flex-grow flex">
+      {averages.map((average, index) => (
+        <div key={index} className="flex-1 flex items-center justify-center font-medium">
+          {average.toFixed(2)}
+        </div>
+      ))}
+    </div>
+    <div className="w-16 flex-shrink-0" />
+    <div className="w-14 flex-shrink-0" />
+  </div>
+);
 
 export default function DataInput() {
   const {
@@ -42,7 +57,6 @@ export default function DataInput() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
   
-  // New state variables for dev toggles
   const [mode, setMode] = useState<Mode>('highlight');
   const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
@@ -126,6 +140,28 @@ export default function DataInput() {
     renameColumn(index, e.target.value.slice(0, 20));  // Limit to 20 characters
   };
 
+  const calculateColumnAverages = (rows: DataRow[]): number[] => {
+    const groups = rows.reduce((acc, row, index) => {
+      // Skip the last row if it's unactivated
+      if (index === rows.length - 1 && row.data.every(cell => cell === null)) return acc;
+
+      row.data.forEach((value, colIndex) => {
+        if (value !== null && row.assignment === colIndex) {
+          if (!acc[colIndex]) acc[colIndex] = [];
+          acc[colIndex].push(value);
+        }
+      });
+      return acc;
+    }, {} as Record<number, number[]>);
+
+    return userData.columnNames.map((_, index) => {
+      const group = groups[index] || [];
+      return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : 0;
+    });
+  };
+
+  const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, userData.columnNames]);
+
   const renderRows = useMemo(() => {
     const shouldIgnoreCollapse = dataToDisplay.length <= 5;
 
@@ -161,20 +197,14 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow, isSimulating, mode, animationType]);
+  }, [dataToDisplay, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow, isSimulating, mode, animationType, userData.controlColumnIndex]);
 
-  // New toggle functions for dev controls
   const toggleMode = () => {
     setMode(prevMode => prevMode === 'highlight' ? 'cover' : 'highlight');
   };
 
   const toggleAnimationType = () => {
-    setAnimationType(prevType => {
-      switch (prevType) {
-        case 'flap': return 'slider';
-        case 'slider': return 'flap';
-      }
-    });
+    setAnimationType(prevType => prevType === 'flap' ? 'slider' : 'flap');
   };
 
   return (
@@ -255,6 +285,7 @@ export default function DataInput() {
         <div className="max-h-[60vh] overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
           {renderRows}
         </div>
+        <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
         <TreatmentEffectInput onApply={applyTreatmentEffect} />
       </div>
     </div>

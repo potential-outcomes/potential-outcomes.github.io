@@ -4,7 +4,7 @@
 import React from 'react';
 import { DataRow } from '@/types/types';
 import { Icons } from '../common/Icons';
-import Overlay from './Overlay';
+import { Overlay, Side } from './Overlay';
 
 type AnimationType = 'flap' | 'slider';
 type Mode = 'cover' | 'highlight';
@@ -65,12 +65,14 @@ export const TableRow: React.FC<TableRowProps> = ({
   mode,
   animationType
 }) => {
-  const getCardSide = (assignment: number, mode: Mode) => {
+  const getCardSide = (assignment: number, mode: Mode): Side => {
     if (mode === 'highlight') {
       return assignment === 0 ? 'left' : 'right';
     } else if (mode === 'cover') {
       return assignment === 0 ? 'right' : 'left';
     }
+
+    return 'none';
   }
 
   return (

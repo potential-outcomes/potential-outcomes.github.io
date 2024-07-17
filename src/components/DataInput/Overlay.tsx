@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 type AnimationType = 'flap' | 'slider' | 'none';
 type Mode = 'cover' | 'highlight';
-type Side = 'left' | 'right' | 'none';
+export type Side = 'left' | 'right' | 'none';
 
 interface OverlayProps {
   side: Side;
@@ -57,7 +57,7 @@ const animationVariants = {
   none: () => ({})
 };
 
-const Overlay: React.FC<OverlayProps> = ({
+export const Overlay: React.FC<OverlayProps> = ({
   side,
   leftChild,
   rightChild,
@@ -137,5 +137,3 @@ const Overlay: React.FC<OverlayProps> = ({
     </div>
   );
 };
-
-export default Overlay;
