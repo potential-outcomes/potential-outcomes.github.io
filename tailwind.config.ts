@@ -95,9 +95,19 @@ const config: Config = {
           },
         },
       },
+      backdropFilter: {
+        'none': 'none',
+        'grayscale': 'grayscale(1)',
+      },
     },
   },
-  plugins: [require("tailwindcss-inner-border"),],
+  variants: {
+    backdropFilter: ['responsive'],
+  },
+  plugins: [
+    require('tailwindcss-filters'),
+    require("tailwindcss-inner-border"),
+  ],
 };
 
 export default config;

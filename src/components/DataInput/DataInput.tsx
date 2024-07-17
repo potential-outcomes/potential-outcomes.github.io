@@ -10,6 +10,7 @@ import { Tooltip } from '../common/Tooltip';
 import { ActionButton } from './ActionButton';
 import { ColumnHeader } from './ColumnHeader';
 import { TreatmentEffectInput } from './TreatmentEffectInput';
+import { motion } from 'framer-motion';
 
 export const COLUMN_PROPORTIONS = {
   index: 1,
@@ -60,6 +61,8 @@ export default function DataInput() {
   const [mode, setMode] = useState<Mode>('highlight');
   const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
+  const [pulsate, setPulsate] = useState(false);
+
   const dataToDisplay = isSimulating && simulationResults && simulationResults.length > 0
     ? simulationResults[simulationResults.length - 1].rows
     : userData.rows;
@@ -69,6 +72,14 @@ export default function DataInput() {
       addRow();
     }
   }, [userData.rows, addRow, isSimulating]);
+
+  useEffect(() => {
+    if (isSimulating && simulationResults) {
+      setPulsate(true);
+      const timer = setTimeout(() => setPulsate(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSimulating, simulationResults?.length]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (isSimulating) return;
@@ -170,10 +181,10 @@ export default function DataInput() {
         key={index}
         row={row}
         index={index}
-        updateCell={isSimulating ? () => {} : updateCell}
-        toggleAssignment={isSimulating ? () => {} : toggleAssignment}
-        addRow={isSimulating ? () => {} : addRow}
-        deleteRow={isSimulating ? () => {} : deleteRow}
+        updateCell={updateCell}
+        toggleAssignment={toggleAssignment}
+        addRow={addRow}
+        deleteRow={deleteRow}
         isUnactivated={!isSimulating && index === dataToDisplay.length - 1}
         controlColumnIndex={userData.controlColumnIndex}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
@@ -239,8 +250,23 @@ export default function DataInput() {
           />
         </div>
       </div>
-
-      <div className="bg-light-background dark:bg-dark-background rounded-lg">
+  
+      <motion.div 
+        className={`bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
+        animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
+        transition={{ duration: 0.25 }}
+      >
+        {isSimulating && (
+          <div className="absolute inset-0 bg-transparent cursor-not-allowed z-50" />
+        )}
+        {pulsate && (
+          <motion.div
+            className="absolute inset-0 bg-white bg-opacity-20 dark:bg-opacity-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.5, 0] }}
+            transition={{ duration: 0.25 }}
+          />
+        )}
         <div className="flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
           <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
           <div className="flex-grow flex">
@@ -287,7 +313,7 @@ export default function DataInput() {
         </div>
         <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
         <TreatmentEffectInput onApply={applyTreatmentEffect} />
-      </div>
+      </motion.div>
     </div>
   );
 }

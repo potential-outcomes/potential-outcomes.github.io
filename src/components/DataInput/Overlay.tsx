@@ -24,11 +24,7 @@ const getParentStyle = (side: 'left' | 'right', currentSide: Side, mode: Mode) =
   if (mode === 'highlight') {
     return side == currentSide ? 'font-bold' : 'opacity-90';
   } else { // cover mode
-    if (side !== currentSide) {
-      return side === 'right' ? 'font-bold text-light-accent dark:text-dark-accent' : 'font-bold text-light-primary dark:text-dark-primary';
-    }
-
-    return 'opacity-90';
+    return side === 'right' ? 'font-bold text-light-accent dark:text-dark-accent' : 'font-bold text-light-primary dark:text-dark-primary';
   }
 };
 
@@ -43,7 +39,7 @@ const getCardStyle = (side: Side, mode: Mode) => {
       ? 'border-2 border-light-accent dark:border-dark-accent'
       : 'border-2 border-light-primary dark:border-dark-primary';
   } else { // cover mode
-    return 'border-2 border-gray-500 bg-light-background/50 dark:bg-dark-background/50';
+    return 'border-2 border-gray-500 bg-light-background/50 dark:bg-dark-background/50 backdrop-filter backdrop-grayscale backdrop-opacity-60';
   }
 };
 
@@ -62,7 +58,7 @@ export const Overlay: React.FC<OverlayProps> = ({
   leftChild,
   rightChild,
   animationType = 'slider',
-  duration = 0.7,
+  duration = 0.6,
   className = '',
   mode = 'highlight',
 }) => {
@@ -82,13 +78,13 @@ export const Overlay: React.FC<OverlayProps> = ({
   return (
     <div className={`relative w-full h-full ${className}`}>
       <div className="absolute inset-0 flex rounded-lg overflow-hidden">
-        <div className={`w-[calc(50%-0.5px)] flex items-center justify-center transition-all duration-500 ${
+        <div className={`w-[calc(50%-0.5px)] flex items-center justify-center transition-all duration-1000 ${
           getParentStyle('left', side, mode)
         }`}>
           {leftChild}
         </div>
         <div className="w-px bg-light-background-tertiary dark:bg-dark-background-tertiary" />
-        <div className={`w-[calc(50%+0.5px)] flex items-center justify-center transition-all duration-500 ${
+        <div className={`w-[calc(50%+0.5px)] flex items-center justify-center transition-all duration-1000 ${
           getParentStyle('right', side, mode)
         }`}>
           {rightChild}

@@ -29,7 +29,6 @@ const InputCell: React.FC<InputCellProps> = ({ value, onChange, placeholder }) =
       bg-light-background-secondary dark:bg-dark-background-secondary
       placeholder:text-light-text-tertiary dark:placeholder:text-dark-text-tertiary
       focus:outline-none focus:ring-0
-      transition-colors duration-200
       [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
     `}
     placeholder={placeholder}
