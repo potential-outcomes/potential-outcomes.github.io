@@ -23,10 +23,10 @@ const InputCell: React.FC<InputCellProps> = ({ value, onChange, placeholder }) =
       const newValue = e.target.value ? Number(e.target.value) : null;
       onChange(newValue);
     }}
+    //       text-light-text-secondary dark:text-dark-text-secondary
     className={`
       w-full h-full px-2 py-1 text-center
       bg-light-background-secondary dark:bg-dark-background-secondary
-      text-light-text-secondary dark:text-dark-text-secondary
       placeholder:text-light-text-tertiary dark:placeholder:text-dark-text-tertiary
       focus:outline-none focus:ring-0
       transition-colors duration-200

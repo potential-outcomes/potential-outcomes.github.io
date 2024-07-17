@@ -182,6 +182,18 @@ export default function DataInput() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold">Data</h2>
         <div className="flex space-x-2">
+          <button
+            onClick={toggleMode}
+            className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
+          >
+            {mode}
+          </button>
+          <button
+            onClick={toggleAnimationType}
+            className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
+          >
+            {animationType}
+          </button>
           <input
             type="file"
             accept=".csv"
@@ -196,22 +208,6 @@ export default function DataInput() {
             primary
           />
         </div>
-      </div>
-
-      {/* Dev toggles */}
-      <div className="mb-4 flex space-x-4">
-        <button
-          onClick={toggleMode}
-          className="px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded"
-        >
-          Mode: {mode}
-        </button>
-        <button
-          onClick={toggleAnimationType}
-          className="px-3 py-1 bg-light-primary dark:bg-dark-primary text-white rounded"
-        >
-          Animation: {animationType}
-        </button>
       </div>
 
       <div className="bg-light-background dark:bg-dark-background rounded-lg">

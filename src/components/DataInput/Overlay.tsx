@@ -24,7 +24,11 @@ const getParentStyle = (side: 'left' | 'right', currentSide: Side, mode: Mode) =
   if (mode === 'highlight') {
     return side == currentSide ? 'font-bold' : 'opacity-90';
   } else { // cover mode
-    return side == currentSide ? 'opacity-100' : 'font-bold';
+    if (side !== currentSide) {
+      return side === 'right' ? 'font-bold text-light-accent dark:text-dark-accent' : 'font-bold text-light-primary dark:text-dark-primary';
+    }
+
+    return 'opacity-90';
   }
 };
 
@@ -39,9 +43,7 @@ const getCardStyle = (side: Side, mode: Mode) => {
       ? 'border-2 border-light-accent dark:border-dark-accent'
       : 'border-2 border-light-primary dark:border-dark-primary';
   } else { // cover mode
-    return side === 'right'
-      ? 'border-2 border-light-accent dark:border-dark-primary bg-light-background dark:bg-dark-background opacity-50'
-      : 'border-2 border-light-primary dark:border-dark-accent bg-light-background dark:bg-dark-background opacity-50';
+    return 'border-2 border-gray-500 bg-light-background/50 dark:bg-dark-background/50';
   }
 };
 
