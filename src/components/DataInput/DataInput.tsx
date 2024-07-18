@@ -218,7 +218,7 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, updateCell, toggleAssignment, deleteRow, addRow, isSimulating, mode, animationType, userData.controlColumnIndex]);
+  }, [dataToDisplay, isCollapsed, isSimulating, mode, animationType, userData.controlColumnIndex]);
 
   const toggleMode = () => {
     setMode(prevMode => prevMode === 'highlight' ? 'cover' : 'highlight');

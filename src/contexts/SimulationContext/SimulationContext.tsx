@@ -156,11 +156,12 @@ function useAsyncState<T>(initialState: T): [T, (newState: T | ((prevState: T) =
 }
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
-  const [userData, setUserData] = useState<UserDataState>({
+  const initialUserDataState: UserDataState = {
     rows: [createNewRow(2, 0)],
     controlColumnIndex: 0,
     columnNames: ["Control", "Treatment"]
-  });
+  };
+  const [userData, setUserData] = useState<UserDataState>(initialUserDataState);
   const [simulationSpeed, setSimulationSpeedState] = useState(50);
   const [selectedTestStatistic, setSelectedTestStatisticState] = useState<ExperimentalTestStatistic>(ExperimentalTestStatistic.DifferenceInMeans);
   const [totalSimulations, setTotalSimulationsState] = useState(1000);
@@ -171,6 +172,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [observedStatistic, setObservedStatistic] = useState<number | null>(null);
   const [past, setPast] = useState<UserDataState[]>([]);
   const [future, setFuture] = useState<UserDataState[]>([]);
+  const previousDataRef = useRef<UserDataState>(initialUserDataState);
 
   // Create validated setters
   const setSimulationSpeed = createValidatedSetter(setSimulationSpeedState, validateSimulationSpeed);
@@ -197,17 +199,33 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [userData, selectedTestStatistic, pValueType, simulationResults]);
 
   const setUserDataWithHistory = useCallback((newData: UserDataState | ((prevData: UserDataState) => UserDataState)) => {
+    console.log('Setting user data:', newData);
+    
     setUserData(prevData => {
+      console.log('setting user data DIRECT:');
       const nextData = typeof newData === 'function' ? newData(prevData) : newData;
+      
       if (JSON.stringify(prevData) !== JSON.stringify(nextData)) {
-        setPast(prev => [...prev, prevData]);
-        setFuture([]);
+        previousDataRef.current = prevData;
+        
+        queueMicrotask(() => {
+          setPast(prev => {
+            if (prev.length === 0 || JSON.stringify(prev[prev.length - 1]) !== JSON.stringify(previousDataRef.current)) {
+              console.log('Updating past');
+              return [...prev, previousDataRef.current];
+            }
+            return prev;
+          });
+          setFuture([]);
+        });
       }
+      
       return nextData;
     });
   }, []);
 
   const addRow = useCallback(() => {
+    console.log('Adding row');
     setUserDataWithHistory(prevData => ({
       ...prevData,
       rows: [...prevData.rows, createNewRow(prevData.columnNames.length, 0)]
@@ -215,6 +233,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const deleteRow = useCallback((index: number) => {
+    console.log('Deleting row:', index);
     setUserDataWithHistory(prevData => ({
       ...prevData,
       rows: prevData.rows.filter((_, i) => i !== index)
@@ -222,6 +241,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const updateCell = useCallback((rowIndex: number, columnIndex: number, value: number | null) => {
+    console.log('Updating cell:', rowIndex, columnIndex, value);
     setUserDataWithHistory(prevData => {
       const newRows = [...prevData.rows];
       const toBeActivated = rowIndex === prevData.rows.length - 1 && value !== null;
@@ -242,10 +262,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       }
       return prevData;
     });
-    console.log('Use Data:', userData.rows);
   }, []);
 
   const toggleAssignment = useCallback((rowIndex: number) => {
+    console.log('Toggling assignment for row:', rowIndex);
     setUserDataWithHistory(prevData => {
       const newRows = prevData.rows.map((row, index) => 
         index === rowIndex
@@ -265,6 +285,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const setControlColumn = useCallback((index: number) => {
+    console.log('Setting control column:', index);
     setUserDataWithHistory(prevData => ({
       ...prevData,
       controlColumnIndex: index
@@ -272,6 +293,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const renameColumn = useCallback((index: number, newName: string) => {
+    console.log('Renaming column:', index, newName);  
     setUserDataWithHistory(prevData => ({
       ...prevData,
       columnNames: prevData.columnNames.map((name, i) => i === index ? newName : name)
@@ -280,6 +302,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
 
   const undo = useCallback(() => {
     if (past.length > 0) {
+      console.log('Past:', past);
       const newPast = [...past];
       const previousState = newPast.pop()!;
       setPast(newPast);
