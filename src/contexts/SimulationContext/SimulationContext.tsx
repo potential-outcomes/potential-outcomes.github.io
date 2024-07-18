@@ -72,10 +72,10 @@ export interface SimulationContextType {
 export const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
 // Validation functions
-const validateSimulationSpeed = (speed: number): boolean => speed >= 1 && speed <= 100;
-const validateSelectedTestStatistic = (stat: ExperimentalTestStatistic): boolean => Object.values(ExperimentalTestStatistic).includes(stat);
-const validateTotalSimulations = (total: number): boolean => total >= 1 && total <= 10000;
-const validatePValueType = (type: PValueType): boolean => ['two-tailed', 'left-tailed', 'right-tailed'].includes(type);
+export const validateSimulationSpeed = (speed: number): boolean => speed >= 1 && speed <= 100;
+export const validateSelectedTestStatistic = (stat: ExperimentalTestStatistic): boolean => Object.values(ExperimentalTestStatistic).includes(stat);
+export const validateTotalSimulations = (total: number): boolean => total >= 1 && total <= 10000;
+export const validatePValueType = (type: PValueType): boolean => ['two-tailed', 'left-tailed', 'right-tailed'].includes(type);
 
 // Custom setter creator
 const createValidatedSetter = <T,>(setter: Setter<T>, validator: (value: T) => boolean): ValidatedSetter<T> => {

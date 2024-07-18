@@ -1,8 +1,9 @@
 // src/components/SimulationControls.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSimulationContext } from '@/contexts/SimulationContext';
+import { validateTotalSimulations } from '@/contexts/SimulationContext/SimulationContext';
 import { ExperimentalTestStatistic } from '@/types/types';
 import { Icons } from '../common/Icons';
 import { testStatistics } from '../../lib/testStatistics';
@@ -31,6 +32,29 @@ export const SimulationControls: React.FC = () => {
     pValue
   } = useSimulationContext();
 
+  const [inputTotalSimulations, setInputTotalSimulations] = useState(totalSimulations.toString());
+
+  useEffect(() => {
+    setInputTotalSimulations(totalSimulations.toString());
+  }, [totalSimulations]);
+
+  const isValidTotalSimulations = (value: string) => {
+    const num = parseInt(value);
+    return !isNaN(num) && num > 0 && validateTotalSimulations(num);
+  };
+
+  const handleTotalSimulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputTotalSimulations(e.target.value);
+  };
+
+  const handleTotalSimulationsBlur = () => {
+    if (isValidTotalSimulations(inputTotalSimulations)) {
+      setTotalSimulations(parseInt(inputTotalSimulations));
+    } else {
+      setInputTotalSimulations(totalSimulations.toString());
+    }
+  };
+
   const getSimulationButtonProps = (isSimulating: boolean, simulationResults: { length: number } | null, totalSimulations: number) => {
     if (isSimulating) {
       return { icon: <Icons.Pause size={20} />, text: 'Pause' };
@@ -55,9 +79,12 @@ export const SimulationControls: React.FC = () => {
             <input
               id="numTrials"
               type="number"
-              value={totalSimulations}
-              onChange={(e) => setTotalSimulations(Math.max(0, parseInt(e.target.value)))}
-              className="flex-grow border w-full rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
+              value={inputTotalSimulations}
+              onChange={handleTotalSimulationsChange}
+              onBlur={handleTotalSimulationsBlur}
+              className={`flex-grow border w-full rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary ${
+                !isValidTotalSimulations(inputTotalSimulations) ? 'border-red-500' : ''
+              }`}
             />
           </div>
           <div className="flex items-center space-x-2">
