@@ -22,13 +22,13 @@ export const COLUMN_PROPORTIONS = {
 type AnimationType = 'flap' | 'slider';
 type Mode = 'cover' | 'highlight';
 
-const ColumnAverages: React.FC<{ averages: number[], columnNames: string[] }> = ({ averages, columnNames }) => (
+const ColumnAverages: React.FC<{ averages: (number | null)[], columnNames: string[] }> = ({ averages, columnNames }) => (
   <div className="flex items-stretch h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-t-2 border-light-primary dark:border-dark-primary">
     <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">Avg</div>
     <div className="flex-grow flex">
       {averages.map((average, index) => (
         <div key={index} className="flex-1 flex items-center justify-center font-medium">
-          {average.toFixed(2)}
+          {average !== null ? average.toFixed(2) : "--"}
         </div>
       ))}
     </div>
@@ -161,11 +161,11 @@ export default function DataInput() {
     renameColumn(index, e.target.value.slice(0, 20));  // Limit to 20 characters
   };
 
-  const calculateColumnAverages = (rows: DataRow[]): number[] => {
+  const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
     const groups = rows.reduce((acc, row, index) => {
       // Skip the last row if it's unactivated
       if (index === rows.length - 1 && row.data.every(cell => cell === null)) return acc;
-
+  
       row.data.forEach((value, colIndex) => {
         if (value !== null && row.assignment === colIndex) {
           if (!acc[colIndex]) acc[colIndex] = [];
@@ -174,10 +174,10 @@ export default function DataInput() {
       });
       return acc;
     }, {} as Record<number, number[]>);
-
+  
     return userData.columnNames.map((_, index) => {
       const group = groups[index] || [];
-      return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : 0;
+      return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : null;
     });
   };
 
@@ -318,13 +318,14 @@ export default function DataInput() {
             </Tooltip>
           </div>
         </div>
-        <div className="flex-grow overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
+        <div className="overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
           {renderRows}
         </div>
         <div className="flex-shrink-0">
           <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
           <TreatmentEffectInput onApply={applyTreatmentEffect} />
         </div>
+        <div className="flex-grow overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary"></div>
       </motion.div>
     </div>
   );
