@@ -58,7 +58,7 @@ export default function DataInput() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
   
-  const [mode, setMode] = useState<Mode>('highlight');
+  const [mode, setMode] = useState<Mode>('cover');
   const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
   const [pulsate, setPulsate] = useState(false);
