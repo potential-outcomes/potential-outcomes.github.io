@@ -188,8 +188,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   }, [simulationSpeed]);
 
   useEffect(() => {
-    const validRows = filterValidRows(userData.rows);
-    const newObservedStatistic = testStatistics[selectedTestStatistic].function(validRows);
+    const newObservedStatistic = testStatistics[selectedTestStatistic].function(userData.rows);
     setObservedStatistic(newObservedStatistic);
 
     if (simulationResults) {
