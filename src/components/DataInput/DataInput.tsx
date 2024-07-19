@@ -66,9 +66,8 @@ export default function DataInput() {
   const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
-      // Create a dummy row with the same structure as other rows
       const dummyRow = {
-        data: new Array(lastSimulationResult[0].data.length).fill(null),
+        data: new Array(userData.columnNames.length).fill(null),
         assignment: 0
       };
       return [...lastSimulationResult, dummyRow];
