@@ -2,14 +2,18 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { useSimulationContext } from '../../contexts/SimulationContext';
-import { UserDataState, DataRow, ExperimentalTestStatistic } from '@/types/types';
+import { 
+  useSimulationData, 
+  useSimulationState,
+  useSimulationHistory,
+  UserDataState,
+  DataRow,
+  ExperimentalTestStatistic
+} from '@/contexts/SimulationContext';
 import TableRow from './TableRow';
 import { Icons } from '../common/Icons';
 import { Tooltip } from '../common/Tooltip';
-import { ActionButton } from './ActionButton';
 import { ColumnHeader } from './ColumnHeader';
-import { TreatmentEffectInput } from './TreatmentEffectInput';
 import { motion } from 'framer-motion';
 
 export const COLUMN_PROPORTIONS = {
@@ -40,28 +44,31 @@ const ColumnAverages: React.FC<{ averages: (number | null)[], columnNames: strin
 export default function DataInput() {
   const {
     userData,
-    simulationResults,
     isSimulating,
-    dataActions: { 
-      setUserData, 
-      addRow, 
-      deleteRow, 
-      updateCell, 
-      toggleAssignment, 
-      undo, 
-      redo,
-      renameColumn
-    },
-  } = useSimulationContext();
+    simulationResults
+  } = useSimulationState();
+  
+  const {
+    setUserData,
+    addRow,
+    deleteRow,
+    updateCell,
+    toggleAssignment,
+    renameColumn
+  } = useSimulationData();
+  
+  const { undo, redo } = useSimulationHistory();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
   
+  const showModeButtons = false;
   const [mode, setMode] = useState<Mode>('cover');
   const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
   const [pulsate, setPulsate] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
@@ -90,70 +97,11 @@ export default function DataInput() {
     }
   }, [isSimulating, simulationResults?.length]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (isSimulating) return;
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result;
-        if (typeof text === 'string') {
-          const lines = text.split('\n').filter(line => line.trim() !== '');
-          
-          const rows = lines.map(line => {
-            const values = line.split(',').map(value => value.trim());
-            const assignment = parseInt(values.pop() || '0', 10);
-            const data = values.map(value => value === '' ? null : Number(value));
-            
-            return {
-              data,
-              assignment
-            };
-          });
-
-          const dataColumnCount = Math.max(...rows.map(row => row.data.length));
-          
-          setUserData({
-            rows: [...rows, { data: Array(dataColumnCount).fill(null), assignment: 0 }],
-            controlColumnIndex: 0,
-            columnNames: userData.columnNames
-          });
-        }
-      };
-      reader.readAsText(file);
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  };
-
-  const applyTreatmentEffect = (effect: number) => {
-    if (isSimulating) return;
-  
-    const newData: UserDataState = {
-      ...userData,
-      rows: userData.rows.map((row, rowIndex) => {
-        if (rowIndex === userData.rows.length - 1) return row;
-  
-        const newData = [...row.data];
-        
-        const referenceIndex = row.assignment;
-        const otherIndex = 1 - referenceIndex;
-  
-        if (newData[referenceIndex] !== null) {
-          const referenceValue = newData[referenceIndex] as number;
-          newData[otherIndex] = referenceValue + (referenceIndex === 0 ? effect : -effect);
-        } else if (newData[otherIndex] !== null) {
-          const otherValue = newData[otherIndex] as number;
-          newData[referenceIndex] = otherValue + (referenceIndex === 0 ? -effect : effect);
-        }
-  
-        return {
-          ...row,
-          data: newData
-        };
-      })
-    };
-  
-    setUserData(newData);
-  };
+  }, [userData.rows.length]);
 
   const handleColumnNameChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (isSimulating) return;
@@ -229,39 +177,30 @@ export default function DataInput() {
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
+      {showModeButtons && (
       <div className="flex-shrink-0 flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold">Data</h2>
         <div className="flex space-x-2">
-          <button
-            onClick={toggleMode}
-            className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
-          >
-            {mode}
-          </button>
-          <button
-            onClick={toggleAnimationType}
-            className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
-          >
-            {animationType}
-          </button>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            ref={fileInputRef}
-            className="hidden"
-          />
-          <ActionButton
-            onClick={() => fileInputRef.current?.click()}
-            icon={<Icons.Upload />}
-            label="Load from .csv"
-            primary
-          />
+          
+          <>
+            <button
+              onClick={toggleMode}
+              className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
+            >
+              {mode}
+            </button>
+            <button
+              onClick={toggleAnimationType}
+              className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
+            >
+              {animationType}
+            </button>
+          </>
         </div>
       </div>
+      )}
   
       <motion.div 
-         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
+         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
         transition={{ duration: 0.25 }}
       >
@@ -317,14 +256,15 @@ export default function DataInput() {
             </Tooltip>
           </div>
         </div>
-        <div className="overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary">
+        <div 
+          ref={scrollContainerRef}
+          className="overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary"
+        >
           {renderRows}
         </div>
         <div className="flex-shrink-0">
           <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
-          <TreatmentEffectInput onApply={applyTreatmentEffect} />
         </div>
-        <div className="flex-grow overflow-y-auto divide-y divide-light-background-tertiary dark:divide-dark-background-tertiary"></div>
       </motion.div>
     </div>
   );

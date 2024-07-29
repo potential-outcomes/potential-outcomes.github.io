@@ -1,19 +1,33 @@
 // src/components/PlotDisplay/PlotDisplay.tsx
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { PlotParams } from 'react-plotly.js';
 import { Data, Layout } from 'plotly.js';
 import { useTheme } from '../common/ThemeProvider';
-import { useSimulationContext } from '@/contexts/SimulationContext';
-import { testStatistics } from '../../lib/testStatistics';
+import { 
+  useSimulationState,
+  useSimulationResults,
+  SimulationResult,
+  testStatistics,
+  ExperimentalTestStatistic
+} from '@/contexts/SimulationContext';
 
 const PlotlyPlot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
 
+const StatDisplay: React.FC<{ title: string; value: string | number }> = ({ title, value }) => (
+  <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-3 rounded-lg flex items-center justify-evenly">
+    <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">{title}</h4>
+    <p className="text-m font-bold text-light-text-primary dark:text-dark-text-primary ml-2">{value}</p>
+  </div>
+);
+
 export const PlotDisplay: React.FC = () => {
   const { theme } = useTheme();
-  const { simulationResults, selectedTestStatistic, observedStatistic } = useSimulationContext();
+  const { simulationResults, observedStatistic } = useSimulationResults();
+  const { selectedTestStatistic, totalSimulations, pValue } = useSimulationState();
+  const plotContainerRef = useRef<HTMLDivElement>(null);
 
   const calculatePlotData = useCallback((simulationData: number[], observedStat: number, theme: string) => {
     const numBins = 20;
@@ -81,13 +95,44 @@ export const PlotDisplay: React.FC = () => {
 
   const plotData = calculatePlotData(simulationData, observedStatistic || 0, theme);
 
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {});
+
+    if (plotContainerRef.current) {
+      resizeObserver.observe(plotContainerRef.current);
+    }
+
+    return () => {
+      if (plotContainerRef.current) {
+        resizeObserver.unobserve(plotContainerRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className="mb-4 w-full h-full h-min-[300px]">
-      <PlotlyPlot
-        data={plotData}
-        layout={plotLayout}
-        style={{ width: '100%', height: '100%' }}
-      />
+    <div className="flex flex-col h-full">
+      <div ref={plotContainerRef} className="flex-grow min-h-0">
+        <PlotlyPlot
+          data={plotData}
+          layout={plotLayout}
+          config={{ responsive: true }}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-4 mt-4">
+        <StatDisplay 
+          title="Observed Statistic" 
+          value={observedStatistic !== null ? observedStatistic.toFixed(4) : 'N/A'} 
+        />
+        <StatDisplay 
+          title="P-value"
+          value={pValue !== null && !isNaN(pValue) ? pValue.toFixed(4) : 'N/A'}
+        />
+        <StatDisplay 
+          title="Current Progress" 
+          value={`${simulationResults ? simulationResults.length : 0} / ${totalSimulations}`} 
+        />
+      </div>
     </div>
   );
 };

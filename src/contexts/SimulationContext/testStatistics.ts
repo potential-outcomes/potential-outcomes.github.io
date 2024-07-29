@@ -1,5 +1,18 @@
-import { DataRow, ExperimentalTestStatistic, TestStatisticMeta } from '../types/types';
+// potential-outcomes/src/lib/testStatistics.ts
+
+import { DataRow } from '@/types/types';
 import { sum } from 'mathjs';
+
+export enum ExperimentalTestStatistic {
+  DifferenceInMeans = 'differenceInMeans',
+  WilcoxonRankSum = 'wilcoxonRankSum'
+}
+
+export interface TestStatisticMeta {
+  name: string;
+  function: (rows: DataRow[]) => number;
+  supportsMultipleTreatments: boolean;
+}
 
 export interface TestStatisticFunction {
   (data: DataRow[]): number;
