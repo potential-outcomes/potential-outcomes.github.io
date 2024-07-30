@@ -1,20 +1,19 @@
 // src/components/PlotDisplay/PlotDisplay.tsx
 'use client';
 
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { PlotParams } from 'react-plotly.js';
 import { Data, Layout } from 'plotly.js';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import { useTheme } from '../common/ThemeProvider';
 import { 
   useSimulationState,
   useSimulationResults,
-  SimulationResult,
   testStatistics,
-  ExperimentalTestStatistic
 } from '@/contexts/SimulationContext';
 
-const PlotlyPlot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
+const Plot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
 
 const StatDisplay: React.FC<{ title: string; value: string | number }> = ({ title, value }) => (
   <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-3 rounded-lg flex items-center justify-evenly">
@@ -27,7 +26,6 @@ export const PlotDisplay: React.FC = () => {
   const { theme } = useTheme();
   const { simulationResults, observedStatistic } = useSimulationResults();
   const { selectedTestStatistic, totalSimulations, pValue } = useSimulationState();
-  const plotContainerRef = useRef<HTMLDivElement>(null);
 
   const calculatePlotData = useCallback((simulationData: number[], observedStat: number, theme: string) => {
     const numBins = 20;
@@ -65,7 +63,8 @@ export const PlotDisplay: React.FC = () => {
     ] as Data[];
   }, []);
 
-  const plotLayout: Partial<Layout> = {
+  const layout: Partial<Layout> = useMemo(() => ({
+    autosize: true,
     xaxis: { 
       title: testStatistics[selectedTestStatistic].name,
       tickmode: 'auto',
@@ -86,8 +85,7 @@ export const PlotDisplay: React.FC = () => {
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
     margin: { l: 45, r: 35, b: 35, t: 0 },
-    autosize: true,
-  };
+  }), [selectedTestStatistic, theme]);
 
   const simulationData = simulationResults
     ? simulationResults.map(result => result.getTestStatistic(selectedTestStatistic))
@@ -95,31 +93,21 @@ export const PlotDisplay: React.FC = () => {
 
   const plotData = calculatePlotData(simulationData, observedStatistic || 0, theme);
 
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(() => {});
-
-    if (plotContainerRef.current) {
-      resizeObserver.observe(plotContainerRef.current);
-    }
-
-    return () => {
-      if (plotContainerRef.current) {
-        resizeObserver.unobserve(plotContainerRef.current);
-      }
-    };
-  }, []);
-
   return (
     <div className="flex flex-col h-full">
-      <div ref={plotContainerRef} className="flex-grow min-h-0">
-        <PlotlyPlot
-          data={plotData}
-          layout={plotLayout}
-          config={{ responsive: true }}
-          style={{ width: '100%', height: '100%' }}
-        />
+      <div className="flex-grow min-h-0">
+        <AutoSizer>
+          {({ height, width }) => (
+            <Plot
+              data={plotData}
+              layout={layout}
+              config={{ responsive: true, autosizable: true }}
+              style={{ width, height: height - 38 }}
+            />
+          )}
+        </AutoSizer>
       </div>
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-3 gap-4 mt-2">
         <StatDisplay 
           title="Observed Statistic" 
           value={observedStatistic !== null ? observedStatistic.toFixed(4) : 'N/A'} 

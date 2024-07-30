@@ -18,6 +18,7 @@
     "react-dom": "^18",
     "react-grid-layout": "^1.4.4",
     "react-plotly.js": "^2.6.0",
+    "react-virtualized-auto-sizer": "^1.0.24",
     "tailwindcss-filters": "^3.0.0"
   },
   "devDependencies": {
