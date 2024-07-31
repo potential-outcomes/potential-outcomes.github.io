@@ -27,7 +27,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-light-background-secondary dark:bg-dark-background-secondary text-light-text dark:text-dark-text`}>
         <ThemeProvider>
           <TopBar links={links} />
-          <main className="container mx-auto mt-0 px-2">
+          <main className="container mx-auto mt-0 px-6">
             {children}
           </main>
         </ThemeProvider>

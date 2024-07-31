@@ -9,12 +9,12 @@ import SimulationControls from '@/components/SimulationControls/SimulationContro
 const SimulationPage: React.FC = () => {
   return (
     <SimulationProvider>
-      <div className="flex flex-col h-screen p-3">
+      <div className="flex flex-col h-screen py-3 px-5">
         <div className="flex-grow flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-4">
-          <Card className="w-full lg:w-1/3">
+          <Card className="w-full lg:w-2/5">
             <SimulationControls />
           </Card>
-          <Card className="w-full lg:w-2/3 flex flex-col">
+          <Card className="w-full lg:w-3/5 flex flex-col">
             <div className="flex-shrink py-5 max-h-[55%]">
               <DataInput />
             </div>

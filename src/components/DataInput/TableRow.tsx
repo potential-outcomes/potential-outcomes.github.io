@@ -23,11 +23,11 @@ const InputCell: React.FC<InputCellProps> = ({ value, onChange, placeholder }) =
       const newValue = e.target.value ? Number(e.target.value) : null;
       onChange(newValue);
     }}
-    //       text-light-text-secondary dark:text-dark-text-secondary
     className={`
       w-full h-full px-2 py-1 text-center
-      bg-light-background-secondary dark:bg-neutral-700
+      bg-light-background-secondary dark:bg-[rgb(25,35,50)]
       placeholder:text-light-text-tertiary dark:placeholder:text-dark-text-tertiary
+      placeholder:text-shadow-none
       focus:outline-none focus:ring-0
       [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
     `}
@@ -109,8 +109,7 @@ export const TableRow: React.FC<TableRowProps> = ({
               placeholder={controlColumnIndex === 1 ? "Control" : "Treatment"}
             />
           }
-          mode={mode}
-          animationType={animationType}
+          // toggleAssignment={() => toggleAssignment(index)}
         />
       </div>
 

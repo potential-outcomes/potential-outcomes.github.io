@@ -1,146 +1,126 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import path from 'path';
 
-type AnimationType = 'flap' | 'slider' | 'none';
-type Mode = 'cover' | 'highlight';
+import React, { useState, useEffect } from 'react';
+import { motion, useMotionValue } from 'framer-motion';
+import { Icons } from '../common/Icons';
+
 export type Side = 'left' | 'right' | 'none';
 
 interface OverlayProps {
   side: Side;
   leftChild: React.ReactNode;
   rightChild: React.ReactNode;
-  animationType?: AnimationType;
   duration?: number;
   className?: string;
-  mode: Mode;
 }
 
-const getParentStyle = (side: 'left' | 'right', currentSide: Side, mode: Mode) => {
-  if (currentSide === 'none') {
-    return 'opacity-90';
-  }
-
-  if (mode === 'highlight') {
-    return side === currentSide ? 'font-bold' : 'opacity-90';
-  } else { // cover mode
-    const isBold = side !== currentSide ? 'font-medium' : '';
-    return side === 'right' 
-      ? `${isBold} text-light-accent dark:text-dark-accent`
-      : `${isBold} text-light-primary dark:text-dark-primary`;
-  }
+const getParentStyle = (side: 'left' | 'right', currentSide: Side): string => {
+  if (currentSide === 'none') return '';
+  const isBold = side !== currentSide ? 'font-medium' : '';
+  return side === 'right' 
+    ? `${isBold} text-light-accent dark:text-dark-accent text-shadow-inherit`
+    : `${isBold} text-light-primary dark:text-dark-primary text-shadow-inherit`;
 };
 
-const getCardStyle = (side: Side, mode: Mode) => {
-  if (side === 'none') {
-    return 'opacity-0';
-  }
-
-  if (mode === 'highlight') {
-    
-    return side === 'right'
-      ? 'border-2 border-light-accent dark:border-dark-accent'
-      : 'border-2 border-light-primary dark:border-dark-primary';
-  } else { // cover mode
-    return 'border-2 border-gray-500 bg-light-background/50 dark:bg-dark-background/50 backdrop-filter backdrop-grayscale backdrop-opacity-60';
-  }
-};
-
-const animationVariants = {
-  flap: (side: Side) => ({
-    rotateY: side === 'left' ? 0 : (side === 'none' ? 90 : 180)
-  }),
-  slider: (side: Side) => ({
-    x: side === 'left' ? '0.06%' : (side === 'none' ? '-25%' : '-50.1%')
-  }),
-  none: () => ({})
+const createGrainyTextureSVG = (baseFrequency = 0.65, numOctaves = 4, opacity = 0.15) => {
+  return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='${baseFrequency}' numOctaves='${numOctaves}' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='${opacity}'/%3E%3C/svg%3E")`;
 };
 
 export const Overlay: React.FC<OverlayProps> = ({
   side,
   leftChild,
   rightChild,
-  animationType = 'slider',
   duration = 0.6,
   className = '',
-  mode = 'cover'
 }) => {
-  const [currentAnimationType, setCurrentAnimationType] = useState<AnimationType>(animationType);
-  const [key, setKey] = useState(0);
+  const x = useMotionValue('0');
+  const [rightShadow, setRightShadow] = useState(0);
+  const [leftShadow, setLeftShadow] = useState(10);
 
   useEffect(() => {
-    if (animationType !== currentAnimationType) {
-      setCurrentAnimationType('none');
-      setTimeout(() => {
-        setCurrentAnimationType(animationType);
-        setKey(prevKey => prevKey + 1);
-      }, 50);
-    }
-  }, [animationType, currentAnimationType]);
+    const unsubscribe = x.on('change', (latest: string) => {
+      const xPercent = parseFloat(latest);
+      
+      // Normalize x to a value between 0 and 1
+      const normalizedX = (xPercent + 50.1) / 50.16;
+      
+      // Calculate shadow sizes
+      const maxShadow = 14;
+      const minShadow = 12;
+      const shadowRange = maxShadow - minShadow;
+
+      setLeftShadow(minShadow + shadowRange * normalizedX);
+      setRightShadow(minShadow + shadowRange * (1 - normalizedX));
+    });
+
+    return () => unsubscribe();
+  }, [x]);
+
+  const renderSliderAnimation = () => (
+    <div className="flex h-full w-[150%]">
+      {/* left panel */}
+      <div className="w-[59%] h-full bg-slate-950/80 border-slate-900/50 border-r-2 border-y-2 backdrop-effect relative opacity-85 overflow-hidden flex items-center justify-end pr-2"> 
+        <div 
+          className="absolute inset-0 mix-blend-overlay"
+          style={{
+            backgroundImage: createGrainyTextureSVG(0.4, 3, 0.2),
+            backgroundRepeat: 'repeat'
+          }}
+        />
+        <Icons.SixDots size={5} className="text-white opacity-25 -mr-2"/>
+      </div>
+      {/* middle empty */}
+      <div 
+        className="w-[34%] h-full -mx-[0px] z-10"
+        style={{
+          boxShadow: `inset ${leftShadow}px 0px 10px -5px rgb(0 0 0 / 0.6), inset -${rightShadow}px 0px 10px -5px rgb(0 0 0 / 0.6)`
+        }}
+      />
+      
+      {/* right panel */}
+      <div className="w-[58%] h-full bg-slate-950/80 border-slate-800/50 border-l-2 border-y-2 backdrop-effect relative opacity-85 overflow-hidden flex items-center pl-2">
+        <div 
+          className="absolute inset-0 mix-blend-overlay"
+          style={{
+            backgroundImage: createGrainyTextureSVG(0.4, 3, 0.2),
+            backgroundRepeat: 'repeat'
+          }}
+        />
+        <Icons.SixDots size={5} className="text-white opacity-25" />
+      </div>
+    </div>
+  );
 
   return (
     <div className={`relative w-full h-full ${className}`}>
-      <div className="absolute inset-0 flex rounded-md overflow-hidden">
-        <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-1000 ${
-          getParentStyle('left', side, mode)
-        }`}>
-          {leftChild}
-        </div>
-        <div className="w-px bg-light-background-tertiary dark:bg-dark-background-tertiary" />
-        <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-1000 ${
-          getParentStyle('right', side, mode)
-        }`}>
-          {rightChild}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-full h-[90%] flex rounded-md overflow-hidden"
+        style={{
+          boxShadow: 'inset 0 10px 15px -3px rgba(0, 0, 0, 0.3), inset 0 -10px 15px -3px rgba(0, 0, 0, 0.3)',
+        }}>
+          <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-1000 ${
+            getParentStyle('left', side)
+          }`}>
+            {leftChild}
+          </div>
+          <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-1000 ${
+            getParentStyle('right', side)
+          }`}>
+            {rightChild}
+          </div>
         </div>
       </div>
-      <div className={`absolute w-full top-0 h-full pointer-events-none overflow-hidden rounded-md backdrop-none z-1 ${side==='none' ? 'opacity-0 bg-gray-600' : 'opacity-100'}`}>
+      <div className={`absolute w-full top-0 h-full pointer-events-none overflow-hidden rounded-md z-1 ${side === 'none' ? 'opacity-0 bg-gray-600' : 'opacity-100'}`}>
         <motion.div
-          key={key}
           className="absolute w-full top-0 h-full pointer-events-none"
-          style={currentAnimationType === 'flap' ? { 
-            transformStyle: 'preserve-3d',
-            transformPerspective: '500px'
-          } : {}}
           initial={false}
-          animate={animationVariants[currentAnimationType](side)}
+          animate={{
+            x: side === 'left' ? '0.06%' : (side === 'none' ? '-25%' : '-50.1%')
+          }}
           transition={{ type: "tween", ease: "easeInOut", duration }}
+          style={{ x }}
         >
-          {currentAnimationType === 'flap' ? (
-            <>
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '50%',
-                  height: '100%',
-                  backfaceVisibility: 'hidden',
-                  transform: 'rotateY(0deg)',
-                }}
-                className={`rounded-l-lg flex items-center justify-center overflow-hidden ${getCardStyle('left', mode)}`}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '50%',
-                  height: '100%',
-                  backfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                }}
-                className={`rounded-r-lg flex items-center justify-center overflow-hidden ${getCardStyle('right', mode)}`}
-              />
-            </>
-          ) : (
-            <div className="flex h-full w-[150%]">
-              <div className="w-[52%] h-full bg-neutral-900/60 backdrop-effect relative opacity-90">
-                <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4KICA8ZmlsdGVyIGlkPSJzbW9vdGhTYW5kYmxhc3QiPgogICAgPGZlVHVyYnVsZW5jZSB0eXBlPSJ0dXJidWxlbmNlIiBiYXNlRnJlcXVlbmN5PSIwLjc1IiBudW1PY3RhdmVzPSI0IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIiByZXN1bHQ9Im5vaXNlIi8+CiAgICA8ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIiByZXN1bHQ9Im5vaXNlMiIvPgogICAgPGZlQ29tcG9zaXRlIGluPSJub2lzZTIiIGluMj0ibm9pc2UyIiBvcGVyYXRvcj0iYXJpdGhtZXRpYyIgazE9IjAiIGsyPSIwLjUiIGszPSIwLjUiIGs0PSIwIiByZXN1bHQ9ImZpbmFsTm9pc2UiLz4KICA8L2ZpbHRlcj4KICA8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsdGVyPSJ1cmwoI3Ntb290aFNhbmRibGFzdCkiLz4KPC9zdmc+')]"></div>
-              </div>
-              {/* <div className={`w-[48.8%] h-full -mx-[1px] z-10 ${getCardStyle(side, 'highlight')}`}></div> */}
-              <div className={`w-[48.8%] h-full -mx-[1px] z-10 border-y-5 border-zinc-900/50`}></div>
-              <div className="w-[52%] h-full bg-neutral-900/60 backdrop-effect relative opacity-90">
-                <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4KICA8ZmlsdGVyIGlkPSJzbW9vdGhTYW5kYmxhc3QiPgogICAgPGZlVHVyYnVsZW5jZSB0eXBlPSJ0dXJidWxlbmNlIiBiYXNlRnJlcXVlbmN5PSIwLjc1IiBudW1PY3RhdmVzPSI0IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIiByZXN1bHQ9Im5vaXNlIi8+CiAgICA8ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIiByZXN1bHQ9Im5vaXNlMiIvPgogICAgPGZlQ29tcG9zaXRlIGluPSJub2lzZTIiIGluMj0ibm9pc2UyIiBvcGVyYXRvcj0iYXJpdGhtZXRpYyIgazE9IjAiIGsyPSIwLjUiIGszPSIwLjUiIGs0PSIwIiByZXN1bHQ9ImZpbmFsTm9pc2UiLz4KICA8L2ZpbHRlcj4KICA8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsdGVyPSJ1cmwoI3Ntb290aFNhbmRibGFzdCkiLz4KPC9zdmc+')]"></div>
-              </div>
-            </div>
-          )}
+          {renderSliderAnimation()}
         </motion.div>
       </div>
     </div>

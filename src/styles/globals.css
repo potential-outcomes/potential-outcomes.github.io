@@ -24,6 +24,18 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  .text-shadow-inherit {
+    text-shadow: 0 0 1.5px;
+  }
+
+  .text-shadow-inherit * {
+    text-shadow: inherit;
+  }
+
+  .text-shadow-none {
+    text-shadow: none;
+  }
 }
 
 .top-bar {

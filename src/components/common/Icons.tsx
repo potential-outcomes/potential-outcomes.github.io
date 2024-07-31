@@ -182,7 +182,19 @@ export const RewindPlay: React.FC<IconProps> = (props) => (
     <polygon points="22 12 19 8.5 19 15.5" />
   </SvgIcon>
 );
-// Export all icons in a single object with professional names
+
+export const Handle: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <circle cx="4" cy="6" r="2" />
+    <circle cx="4" cy="12" r="2" />
+    <circle cx="4" cy="18" r="2" />
+    <circle cx="12" cy="6" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="12" cy="18" r="2" />
+  </SvgIcon>
+);
+
+// Update the Icons object to include the new SixDots icon
 export const Icons = {
   Undo,
   Redo,
@@ -202,6 +214,7 @@ export const Icons = {
   Continue,
   Clear,
   RewindPlay,
+  SixDots: Handle, // Add the new icon here
 };
 
 export default Icons;
