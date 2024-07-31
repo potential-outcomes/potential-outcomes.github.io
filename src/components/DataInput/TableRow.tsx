@@ -25,7 +25,7 @@ const InputCell: React.FC<InputCellProps> = ({ value, onChange, placeholder }) =
     }}
     className={`
       w-full h-full px-2 py-1 text-center
-      bg-light-background-secondary dark:bg-[rgb(25,35,50)]
+      bg-light-background-secondary dark:bg-[rgb(40,50,65)]
       placeholder:text-light-text-tertiary dark:placeholder:text-dark-text-tertiary
       placeholder:text-shadow-none
       focus:outline-none focus:ring-0

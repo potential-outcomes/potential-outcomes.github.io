@@ -201,7 +201,7 @@ export default function DataInput() {
       )}
   
       <motion.div 
-         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : ''}`}
+         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
         transition={{ duration: 0.25 }}
       >
