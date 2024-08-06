@@ -14,6 +14,18 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
     case 'SET_USER_DATA':
       return { ...state, ...updateHistory(action.payload) };
 
+    case 'CLEAR_USER_DATA':
+        const initialUserData: UserDataState = {
+          rows: [{ data: [null, null], assignment: 0 }],
+          controlColumnIndex: 0,
+          columnNames: ["Control", "Treatment"],
+        };
+        return { 
+          ...state, 
+          ...updateHistory(initialUserData),
+          results: { simulationResults: [], pValue: null, observedStatistic: null }
+        };
+
     case 'ADD_ROW':
         console.log('ADD_ROW');
       const newRow = emptyRow(state.data.userData.columnNames.length, 0);

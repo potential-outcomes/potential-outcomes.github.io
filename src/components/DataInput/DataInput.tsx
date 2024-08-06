@@ -56,8 +56,6 @@ export default function DataInput() {
     toggleAssignment,
     renameColumn
   } = useSimulationData();
-  
-  const { undo, redo } = useSimulationHistory();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
@@ -176,7 +174,7 @@ export default function DataInput() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
+    <div className="w-full max-w-4xl mx-auto text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
       {showModeButtons && (
       <div className="flex-shrink-0 flex justify-between items-center mb-4">
         <div className="flex space-x-2">
@@ -201,7 +199,7 @@ export default function DataInput() {
       )}
   
       <motion.div 
-         className={`flex-grow flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
+         className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
         transition={{ duration: 0.25 }}
       >
@@ -243,18 +241,6 @@ export default function DataInput() {
           </div>
           <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div>
           <div className="w-14 flex-shrink-0 flex justify-end items-center space-x-1 pr-1">
-            <Tooltip content="Undo (Cmd+Z / Ctrl+Z)">
-              <Icons.Undo 
-                className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
-                onClick={undo}
-              />
-            </Tooltip>
-            <Tooltip content="Redo (Cmd+Shift+Z / Ctrl+Y)">
-              <Icons.Redo 
-                className="w-5 h-5 opacity-90 cursor-pointer text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary transition-colors duration-200" 
-                onClick={redo}
-              />
-            </Tooltip>
           </div>
         </div>
         <div 

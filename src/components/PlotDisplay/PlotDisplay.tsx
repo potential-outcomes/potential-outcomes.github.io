@@ -16,9 +16,9 @@ import {
 const Plot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
 
 const StatDisplay: React.FC<{ title: string; value: string | number }> = ({ title, value }) => (
-  <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-3 rounded-lg flex items-center justify-evenly">
+  <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-2 rounded-lg flex items-center justify-evenly">
     <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">{title}</h4>
-    <p className="text-m font-bold text-light-text-primary dark:text-dark-text-primary ml-2">{value}</p>
+    <p className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary ml-2">{value}</p>
   </div>
 );
 
@@ -107,7 +107,7 @@ export const PlotDisplay: React.FC = () => {
           )}
         </AutoSizer>
       </div>
-      <div className="grid grid-cols-3 gap-4 mt-2">
+      <div className="grid grid-cols-3 gap-4">
         <StatDisplay 
           title="Observed Statistic" 
           value={observedStatistic !== null ? observedStatistic.toFixed(4) : 'N/A'} 

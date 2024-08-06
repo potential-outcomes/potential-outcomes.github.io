@@ -28,6 +28,7 @@ export { ExperimentalTestStatistic } from './testStatistics';
   export interface SimulationDataContext {
     userData: UserDataState;
     setUserData: (data: UserDataState) => ActionResult;
+    clearUserData: () => ActionResult;
     addRow: () => ActionResult;
     deleteRow: (index: number) => ActionResult;
     updateCell: (rowIndex: number, columnIndex: number, value: number | null) => ActionResult;
@@ -78,6 +79,7 @@ export { ExperimentalTestStatistic } from './testStatistics';
   // Action types (for use in reducer)
   export type SimulationAction =
     | { type: 'SET_USER_DATA'; payload: UserDataState }
+    | { type: 'CLEAR_USER_DATA' }
     | { type: 'ADD_ROW' }
     | { type: 'DELETE_ROW'; payload: number }
     | { type: 'UPDATE_CELL'; payload: { rowIndex: number; columnIndex: number; value: number | null } }

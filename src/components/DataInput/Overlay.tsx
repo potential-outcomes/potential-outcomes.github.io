@@ -60,7 +60,7 @@ export const Overlay: React.FC<OverlayProps> = ({
     <div className={`flex h-full w-[150%]`}>
       {/* left panel */}
       <div 
-        className={`w-[58%] h-full bg-slate-950/80 border-slate-800/50 border-r-2 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center justify-end pr-2 ${side === 'none' ? 'mr-[40%]' : ''} transition-[margin] duration-1000`}
+        className={`w-[58%] h-full bg-slate-950/80 border-slate-700/60 border-r-2 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center justify-end pr-2 ${side === 'none' ? 'mr-[60%]' : ''} transition-[margin] duration-1000`}
         style={{
           boxShadow: `${leftShadow}px 0 7px -1px rgb(0 0 0 / 0.4)`
         }}
@@ -80,7 +80,7 @@ export const Overlay: React.FC<OverlayProps> = ({
       
       {/* right panel */}
       <div 
-        className={`w-[58%] h-full bg-slate-950/80 border-slate-800/50 border-l-2 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center pl-2 ${side === 'none' ? 'ml-[40%]' : ''} transition-[margin] duration-1000`}
+        className={`w-[58%] h-full bg-slate-950/80 border-slate-700/60 border-l-2 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center pl-2 ${side === 'none' ? 'ml-[60%]' : ''} transition-[margin] duration-1000`}
         style={{
           boxShadow: `-${rightShadow}px 0 7px -1px rgb(0 0 0 / 0.4)`
         }}
@@ -119,7 +119,7 @@ export const Overlay: React.FC<OverlayProps> = ({
           className="absolute w-full top-0 h-full pointer-events-none"
           initial={false}
           animate={{
-            x: side === 'left' ? '0.06%' : (side === 'none' ? '0.06%' : '-50.1%')
+            x: side === 'left' ? '0.06%' : (side === 'none' ? '-25%' : '-50.1%')
           }}
           transition={{ type: "tween", ease: "easeInOut", duration }}
           style={{ x }}

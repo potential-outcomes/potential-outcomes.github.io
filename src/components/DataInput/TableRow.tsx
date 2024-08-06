@@ -84,7 +84,7 @@ export const TableRow: React.FC<TableRowProps> = ({
             className="focus:outline-none hover:opacity-80 transition-opacity"
             aria-label={isCollapsed ? "Expand rows" : "Collapse rows"}
           >
-            {isCollapsed ? <Icons.Expand size={5} /> : <Icons.Collapse size={5} />}
+            {isCollapsed ? <Icons.Expand size={4} /> : <Icons.Collapse size={4} />}
           </button>
         ) : (
           index + 1

@@ -113,33 +113,22 @@ export const SimulationControls: React.FC = () => {
 
     return (
         <div className="flex flex-col space-y-4">
-            <div className="space-y-2">
-                <label htmlFor="numTrials" className="font-semibold block">Number of trials:</label>
-                <input
-                    id="numTrials"
-                    type="number"
-                    value={inputTotalSimulations}
-                    onChange={handleTotalSimulationsChange}
-                    onBlur={handleTotalSimulationsBlur}
-                    className={`w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary ${
-                        !isValidTotalSimulations(inputTotalSimulations) ? 'border-red-500' : ''
-                    }`}
-                />
-            </div>
+            {/* <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              ref={fileInputRef}
+              className="hidden"
+            />
 
-            <div className="space-y-2">
-                <label htmlFor="simulationSpeed" className="font-semibold block">Speed:</label>
-                <input
-                    id="simulationSpeed"
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={simulationSpeed}
-                    onChange={(e) => setSimulationSpeed(parseInt(e.target.value))}
-                    className="w-full h-2 bg-light-background-tertiary dark:bg-dark-background-tertiary rounded-lg appearance-none cursor-pointer"
-                    title={`${simulationSpeed}%`}
-                />
-            </div>
+            <ActionButton
+              onClick={() => fileInputRef.current?.click()}
+              icon={<Icons.Upload />}
+              label="Load from .csv"
+              primary
+            />
+
+            <TreatmentEffectInput /> */}
 
             <div className="space-y-2">
                 <label htmlFor="testStatistic" className="font-semibold block">Test Statistic:</label>
@@ -156,17 +145,17 @@ export const SimulationControls: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-                <label htmlFor="pValueType" className="font-semibold block">P-value Type:</label>
-                <select
-                    id="pValueType"
-                    value={pValueType}
-                    onChange={(e) => setPValueType(e.target.value as 'two-tailed' | 'left-tailed' | 'right-tailed')}
-                    className="w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                >
-                    <option value="two-tailed">Two-tailed</option>
-                    <option value="left-tailed">Left-tailed</option>
-                    <option value="right-tailed">Right-tailed</option>
-                </select>
+                <label htmlFor="numTrials" className="font-semibold block">Number of trials:</label>
+                <input
+                    id="numTrials"
+                    type="number"
+                    value={inputTotalSimulations}
+                    onChange={handleTotalSimulationsChange}
+                    onBlur={handleTotalSimulationsBlur}
+                    className={`w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary ${
+                        !isValidTotalSimulations(inputTotalSimulations) ? 'border-red-500' : ''
+                    }`}
+                />
             </div>
 
             <div className="flex flex-col space-y-2">
@@ -186,21 +175,33 @@ export const SimulationControls: React.FC = () => {
                 </button>
             </div>
 
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              ref={fileInputRef}
-              className="hidden"
-            />
-            <ActionButton
-              onClick={() => fileInputRef.current?.click()}
-              icon={<Icons.Upload />}
-              label="Load from .csv"
-              primary
-            />
+            <div className="space-y-2">
+                <label htmlFor="simulationSpeed" className="font-semibold block">Speed:</label>
+                <input
+                    id="simulationSpeed"
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={simulationSpeed}
+                    onChange={(e) => setSimulationSpeed(parseInt(e.target.value))}
+                    className="w-full h-2 bg-light-background-tertiary dark:bg-dark-background-tertiary rounded-lg appearance-none cursor-pointer"
+                    title={`${simulationSpeed}%`}
+                />
+            </div>            
 
-            <TreatmentEffectInput />
+            <div className="space-y-2">
+                <label htmlFor="pValueType" className="font-semibold block">P-value Type:</label>
+                <select
+                    id="pValueType"
+                    value={pValueType}
+                    onChange={(e) => setPValueType(e.target.value as 'two-tailed' | 'left-tailed' | 'right-tailed')}
+                    className="w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
+                >
+                    <option value="two-tailed">Two-tailed</option>
+                    <option value="left-tailed">Left-tailed</option>
+                    <option value="right-tailed">Right-tailed</option>
+                </select>
+            </div>
         </div>
     );
 };

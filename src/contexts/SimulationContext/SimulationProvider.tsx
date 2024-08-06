@@ -17,6 +17,7 @@ const initialState: SimulationState = {
       columnNames: ["Control", "Treatment"],
     },
     setUserData: () => ({ success: false, error: 'Not implemented' }),
+    clearUserData: () => ({ success: false, error: 'Not implemented' }),
     addRow: () => ({ success: false, error: 'Not implemented' }),
     deleteRow: () => ({ success: false, error: 'Not implemented' }),
     updateCell: () => ({ success: false, error: 'Not implemented' }),
@@ -77,13 +78,13 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   }, []);
 
   const setUserData = dispatchWithResult(actions.setUserData);
+  const clearUserData = dispatchWithResult(actions.clearUserData);
   const addRow = dispatchWithResult(actions.addRow);
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const updateCell = dispatchWithResult(actions.updateCell);
   const toggleAssignment = dispatchWithResult(actions.toggleAssignment);
   const setControlColumn = dispatchWithResult(actions.setControlColumn);
   const renameColumn = dispatchWithResult(actions.renameColumn);
-  // const setSimulationSpeed = dispatchWithResult(actions.setSimulationSpeed);
   const setSelectedTestStatistic = dispatchWithResult(actions.setSelectedTestStatistic);
   const setTotalSimulations = dispatchWithResult(actions.setTotalSimulations);
   const setPValueType = dispatchWithResult(actions.setPValueType);
@@ -212,6 +213,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     data: {
       ...state.data,
       setUserData,
+      clearUserData,
       addRow,
       deleteRow,
       updateCell,
