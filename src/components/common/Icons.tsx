@@ -19,8 +19,6 @@ const SvgIcon: React.FC<IconProps & React.SVGProps<SVGSVGElement>> = ({
 }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke={color}
@@ -183,7 +181,7 @@ export const RewindPlay: React.FC<IconProps> = (props) => (
   </SvgIcon>
 );
 
-export const Handle: React.FC<IconProps> = (props) => (
+export const SixDots: React.FC<IconProps> = (props) => (
   <SvgIcon viewBox="0 0 24 24" {...props}>
     <circle cx="4" cy="6" r="2" />
     <circle cx="4" cy="12" r="2" />
@@ -194,7 +192,6 @@ export const Handle: React.FC<IconProps> = (props) => (
   </SvgIcon>
 );
 
-// Update the Icons object to include the new SixDots icon
 export const Icons = {
   Undo,
   Redo,
@@ -214,7 +211,7 @@ export const Icons = {
   Continue,
   Clear,
   RewindPlay,
-  SixDots: Handle, // Add the new icon here
+  SixDots, // Add the new icon here
 };
 
 export default Icons;

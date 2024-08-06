@@ -124,7 +124,7 @@ const ApplyEffectButton: React.FC = () => {
           onClick={() => setShowEffectPopup(!showEffectPopup)}
           className={`p-1 ${wandColorClass} ${wandHoverClass} focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200`}
         >
-          <Icons.MagicWand size={18} />
+          <Icons.MagicWand size={4} />
         </button>
       </Tooltip>
   

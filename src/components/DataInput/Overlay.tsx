@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { motion, useMotionValue } from 'framer-motion';
 import { Icons } from '../common/Icons';
 
@@ -8,10 +8,9 @@ export type Side = 'left' | 'right' | 'none';
 
 interface OverlayProps {
   side: Side;
-  leftChild: React.ReactNode;
-  rightChild: React.ReactNode;
   duration?: number;
   className?: string;
+  children: ReactNode[];
 }
 
 const getParentStyle = (side: 'left' | 'right', currentSide: Side): string => {
@@ -28,10 +27,9 @@ const createGrainyTextureSVG = (baseFrequency = 0.65, numOctaves = 4, opacity = 
 
 export const Overlay: React.FC<OverlayProps> = ({
   side,
-  leftChild,
-  rightChild,
   duration = 0.6,
   className = '',
+  children,
 }) => {
   const x = useMotionValue('0');
   const [rightShadow, setRightShadow] = useState(0);
@@ -72,7 +70,7 @@ export const Overlay: React.FC<OverlayProps> = ({
             backgroundRepeat: 'repeat'
           }}
         />
-        <Icons.SixDots size={5} className="text-white opacity-25 -mr-2"/>
+        <Icons.SixDots size={4} className="text-white opacity-25 -mr-2"/>
       </div>
   
       {/* middle empty */}
@@ -92,7 +90,7 @@ export const Overlay: React.FC<OverlayProps> = ({
             backgroundRepeat: 'repeat'
           }}
         />
-        <Icons.SixDots size={5} className="text-white opacity-25" />
+        <Icons.SixDots size={4} className="text-white opacity-25" />
       </div>
     </div>
   );
@@ -105,12 +103,12 @@ export const Overlay: React.FC<OverlayProps> = ({
           <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-500 ${
             getParentStyle('left', side)
           }`}>
-            {leftChild}
+            {children[0]}
           </div>
           <div className={`w-[calc(50%+0.3px)] flex items-center justify-center transition-all duration-500 ${
             getParentStyle('right', side)
           }`}>
-            {rightChild}
+            {children[1]}
           </div>
         </div>
       </div>

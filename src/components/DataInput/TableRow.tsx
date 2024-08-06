@@ -95,21 +95,18 @@ export const TableRow: React.FC<TableRowProps> = ({
       <div className="flex-grow h-full">
         <Overlay
           side={isUnactivated ? 'none' : getCardSide(row.assignment, mode)}
-          leftChild={
+          children={[
             <InputCell
               value={row.data[0]}
               onChange={(value) => updateCell(index, 0, value)}
               placeholder={controlColumnIndex === 0 ? "Control" : "Treatment"}
-            />
-          }
-          rightChild={
+            />,
             <InputCell
               value={row.data[1]}
               onChange={(value) => updateCell(index, 1, value)}
               placeholder={controlColumnIndex === 1 ? "Control" : "Treatment"}
-            />
+            />]
           }
-          // toggleAssignment={() => toggleAssignment(index)}
         />
       </div>
 
@@ -136,7 +133,7 @@ export const TableRow: React.FC<TableRowProps> = ({
             className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
             aria-label="Add row"
           >
-            <Icons.Add size={5}/>
+            <Icons.Add size={4}/>
           </button>
         ) : (
           <button 
@@ -144,7 +141,7 @@ export const TableRow: React.FC<TableRowProps> = ({
             className="text-light-text-tertiary hover:text-light-error dark:text-dark-text-tertiary dark:hover:text-dark-error focus:outline-none"
             aria-label="Delete row"
           >
-            <Icons.Close size={5}/>
+            <Icons.Close size={4}/>
           </button>
         )}
       </div>

@@ -99,13 +99,13 @@ export const SimulationControls: React.FC = () => {
 
     const getSimulationButtonProps = (isSimulating: boolean, simulationResults: { length: number } | null, totalSimulations: number) => {
         if (isSimulating) {
-            return { icon: <Icons.Pause size={20} />, text: 'Pause' };
+            return { icon: <Icons.Pause size={6} />, text: 'Pause' };
         } else if (!simulationResults || simulationResults.length === 0) {
-            return { icon: <Icons.Play size={20} />, text: 'Play' };
+            return { icon: <Icons.Play size={6} />, text: 'Play' };
         } else if (simulationResults.length < totalSimulations) {
-            return { icon: <Icons.Continue size={20} />, text: 'Continue' };
+            return { icon: <Icons.Continue size={6} />, text: 'Continue' };
         } else {
-            return { icon: <Icons.RewindPlay size={20} />, text: 'Restart' };
+            return { icon: <Icons.RewindPlay size={6} />, text: 'Restart' };
         }
     };
 
@@ -170,7 +170,7 @@ export const SimulationControls: React.FC = () => {
                     onClick={clearSimulationData}
                     className="w-full h-10 bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary px-4 rounded hover:bg-light-background-secondary dark:hover:bg-dark-background-secondary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary focus:ring-offset-2 flex items-center justify-center gap-2"
                 >
-                    <Icons.Clear size={20} />
+                    <Icons.Clear size={6} />
                     <span>Clear</span>
                 </button>
             </div>

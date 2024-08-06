@@ -59,7 +59,7 @@ const DataControls: React.FC = () => {
           onClick={() => fileInputRef.current?.click()}
           className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200"
         >
-          <Icons.Upload size={18} />
+          <Icons.Upload size={4} />
         </button>
       </Tooltip>
       
@@ -70,7 +70,7 @@ const DataControls: React.FC = () => {
           onClick={undo}
           className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200"
         >
-          <Icons.Undo size={18} />
+          <Icons.Undo size={4} />
         </button>
       </Tooltip>
       <Tooltip content="Redo (Cmd+Shift+Z / Ctrl+Y)">
@@ -78,7 +78,7 @@ const DataControls: React.FC = () => {
           onClick={redo}
           className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200"
         >
-          <Icons.Redo size={18} />
+          <Icons.Redo size={4} />
         </button>
       </Tooltip>
 
@@ -87,7 +87,7 @@ const DataControls: React.FC = () => {
           onClick={clearUserData}
           className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200"
         >
-          <Icons.Clear size={18} />
+          <Icons.Clear size={4} />
         </button>
       </Tooltip>
     </div>

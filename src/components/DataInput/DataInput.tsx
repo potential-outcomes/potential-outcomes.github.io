@@ -153,7 +153,7 @@ export default function DataInput() {
       const expandButton = (
         <div key="expand-button" className="flex items-center justify-center h-12 cursor-pointer border-b border-light-background-tertiary dark:border-dark-background-tertiary" onClick={() => setIsCollapsed(false)}>
           <button className="flex items-center space-x-2 text-light-primary dark:text-dark-primary hover:text-light-primary-dark dark:hover:text-dark-primary-light focus:outline-none transition-colors duration-200">
-            <Icons.Expand size={5} />
+            <Icons.Expand size={4} />
             <span>Expand {dataToDisplay.length - 4} hidden rows</span>
           </button>
         </div>
