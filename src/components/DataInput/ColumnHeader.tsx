@@ -35,7 +35,7 @@ export function ColumnHeader({
         <Tooltip content="Click to edit column name">
           <div className="flex items-center justify-center w-full cursor-pointer" onClick={onClick}>
             <span className="truncate text-center">{value}</span>
-            <Icons.Edit className="ml-1 opacity-70 hover:opacity-100" />
+            <Icons.Edit size={4} className="ml-1 opacity-70 hover:opacity-100" />
           </div>
         </Tooltip>
       )}
