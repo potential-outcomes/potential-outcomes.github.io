@@ -39,6 +39,7 @@ const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
+    if (row.assignment === null) return acc;
     const value = row.data[row.assignment];
     if (typeof value === 'number') {
       if (!acc[row.assignment]) acc[row.assignment] = [];
@@ -58,6 +59,7 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
+    if (row.assignment === null) return acc;
     const value = row.data[0];
     if (typeof value === 'number') {
       if (!acc[row.assignment]) acc[row.assignment] = [];

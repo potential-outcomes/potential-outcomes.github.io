@@ -12,8 +12,7 @@ export const SimulationContext = createContext<SimulationContextType | undefined
 const initialState: SimulationState = {
   data: {
     userData: {
-      rows: [{ data: [null, null], assignment: 0 }],
-      controlColumnIndex: 0,
+      rows: [{ data: [null, null], assignment: null }],
       columnNames: ["Control", "Treatment"],
     },
     setUserData: () => ({ success: false, error: 'Not implemented' }),
@@ -21,9 +20,10 @@ const initialState: SimulationState = {
     addRow: () => ({ success: false, error: 'Not implemented' }),
     deleteRow: () => ({ success: false, error: 'Not implemented' }),
     updateCell: () => ({ success: false, error: 'Not implemented' }),
-    toggleAssignment: () => ({ success: false, error: 'Not implemented' }),
-    setControlColumn: () => ({ success: false, error: 'Not implemented' }),
+    setAssignment: () => ({ success: false, error: 'Not implemented' }),
     renameColumn: () => ({ success: false, error: 'Not implemented' }),
+    addColumn: () => ({ success: false, error: 'Not implemented' }),
+    removeColumn: () => ({ success: false, error: 'Not implemented' }),
   },
   settings: {
     simulationSpeed: 50,
@@ -82,9 +82,10 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   const addRow = dispatchWithResult(actions.addRow);
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const updateCell = dispatchWithResult(actions.updateCell);
-  const toggleAssignment = dispatchWithResult(actions.toggleAssignment);
-  const setControlColumn = dispatchWithResult(actions.setControlColumn);
+  const setAssignment = dispatchWithResult(actions.setAssignment);
   const renameColumn = dispatchWithResult(actions.renameColumn);
+  const addColumn = dispatchWithResult(actions.addColumn);
+  const removeColumn = dispatchWithResult(actions.removeColumn);
   const setSelectedTestStatistic = dispatchWithResult(actions.setSelectedTestStatistic);
   const setTotalSimulations = dispatchWithResult(actions.setTotalSimulations);
   const setPValueType = dispatchWithResult(actions.setPValueType);
@@ -217,9 +218,10 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       addRow,
       deleteRow,
       updateCell,
-      toggleAssignment,
-      setControlColumn,
+      setAssignment,
       renameColumn,
+      addColumn,
+      removeColumn
     },
     settings: {
       ...state.settings,

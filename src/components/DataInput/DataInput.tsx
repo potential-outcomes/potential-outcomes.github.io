@@ -5,16 +5,15 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { 
   useSimulationData, 
   useSimulationState,
-  useSimulationHistory,
-  UserDataState,
   DataRow,
-  ExperimentalTestStatistic
+  calculateColumnAverages,
+  emptyRow
 } from '@/contexts/SimulationContext';
-import TableRow from './TableRow';
 import { Icons } from '../common/Icons';
-import { Tooltip } from '../common/Tooltip';
 import { ColumnHeader } from './ColumnHeader';
 import { motion } from 'framer-motion';
+import { Overlay } from './Overlay';
+import InputCell from './InputCell';
 
 export const COLUMN_PROPORTIONS = {
   index: 1,
@@ -22,9 +21,6 @@ export const COLUMN_PROPORTIONS = {
   assignment: 2,
   actions: 1
 };
-
-type AnimationType = 'flap' | 'slider';
-type Mode = 'cover' | 'highlight';
 
 const ColumnAverages: React.FC<{ averages: (number | null)[], columnNames: string[] }> = ({ averages, columnNames }) => (
   <div className="flex items-stretch h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-t-2 border-light-primary dark:border-dark-primary">
@@ -36,10 +32,110 @@ const ColumnAverages: React.FC<{ averages: (number | null)[], columnNames: strin
         </div>
       ))}
     </div>
-    <div className="w-16 flex-shrink-0" />
+    {/* <div className="w-16 flex-shrink-0" /> */}
     <div className="w-14 flex-shrink-0" />
   </div>
 );
+
+interface TableRowProps {
+  row: DataRow;
+  index: number;
+  updateCell: (rowIndex: number, columnIndex: number, value: number | null) => void;
+  setAssignment: (rowIndex: number, assignment: number | null) => void;
+  addRow: () => void;
+  deleteRow: (rowIndex: number) => void;
+  isUnactivated: boolean;
+  toggleCollapse?: () => void;
+  isCollapsed?: boolean;
+  columnNames: string[];
+}
+
+const TableRow: React.FC<TableRowProps> = ({ 
+  row, 
+  index, 
+  updateCell, 
+  setAssignment, 
+  addRow,
+  deleteRow,
+  isUnactivated,
+  toggleCollapse,
+  isCollapsed,
+  columnNames
+}) => {
+  return (
+    <div className={`flex items-stretch w-full h-14 py-2 bg-light-background dark:bg-dark-background ${isUnactivated ? 'sticky bottom-0' : ''}`}>
+      {/* Index Column */}
+      <div className="flex items-center justify-center w-12 flex-shrink-0 text-light-text-secondary dark:text-dark-text-secondary">
+        {isUnactivated && toggleCollapse ? (
+          <button
+            onClick={toggleCollapse}
+            className="focus:outline-none hover:opacity-80 transition-opacity"
+            aria-label={isCollapsed ? "Expand rows" : "Collapse rows"}
+          >
+            {isCollapsed ? <Icons.Expand size={4} /> : <Icons.Collapse size={4} />}
+          </button>
+        ) : (
+          index + 1
+        )}
+      </div>
+
+      {/* Data Column */}
+      <div className="flex-grow h-full z-0">
+        <Overlay
+          assignment={row.assignment}
+          setAssignment={(assignment) => setAssignment(index, assignment)}
+          children={
+            row.data.map((_, i) => (
+              <InputCell
+                key={i}
+                value={row.data[i]}
+                onChange={(value) => updateCell(index, i, value)}
+                delayedPlaceholder={row.assignment === i ? columnNames[i] : "?"}
+              />
+            ))
+          }
+          index={index}
+        />
+      </div>
+
+      {/* Assignment Toggle Column */}
+      {/* <div className="flex items-center justify-center w-16 flex-shrink-0">
+        <button
+          onClick={() => setAssignment(index, row.assignment == null ? row.assignment : (row.assignment + 1) % row.data.length)}
+          className={`w-6 h-6 rounded-md transition-colors duration-300
+            ${isUnactivated 
+              ? 'bg-light-background-tertiary dark:bg-dark-background-tertiary' 
+              : row.assignment === 1
+                ? 'bg-light-accent dark:bg-dark-accent' 
+                : 'bg-light-primary dark:bg-dark-primary'}
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-primary dark:focus:ring-dark-primary`}
+          aria-label={row.assignment === 1 ? "Treatment assigned" : "Control assigned"}
+        />
+      </div> */}
+
+      {/* Action Column */}
+      <div className="flex items-center justify-center w-14 flex-shrink-0">
+        {isUnactivated ? (
+          <button 
+            onClick={addRow}
+            className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
+            aria-label="Add row"
+          >
+            <Icons.Add size={4}/>
+          </button>
+        ) : (
+          <button 
+            onClick={() => deleteRow(index)}
+            className="text-light-text-tertiary hover:text-light-error dark:text-dark-text-tertiary dark:hover:text-dark-error focus:outline-none"
+            aria-label="Delete row"
+          >
+            <Icons.Close size={4}/>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function DataInput() {
   const {
@@ -49,20 +145,17 @@ export default function DataInput() {
   } = useSimulationState();
   
   const {
-    setUserData,
     addRow,
     deleteRow,
     updateCell,
-    toggleAssignment,
-    renameColumn
+    setAssignment,
+    renameColumn,
+    addColumn, 
+    removeColumn
   } = useSimulationData();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
-  
-  const showModeButtons = false;
-  const [mode, setMode] = useState<Mode>('cover');
-  const [animationType, setAnimationType] = useState<AnimationType>('slider');
 
   const [pulsate, setPulsate] = useState(false);
 
@@ -71,10 +164,7 @@ export default function DataInput() {
   const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
-      const dummyRow = {
-        data: new Array(userData.columnNames.length).fill(null),
-        assignment: 0
-      };
+      const dummyRow = emptyRow(lastSimulationResult[0].data.length);
       return [...lastSimulationResult, dummyRow];
     } else {
       return userData.rows;
@@ -106,26 +196,6 @@ export default function DataInput() {
     renameColumn(index, e.target.value.slice(0, 20));  // Limit to 20 characters
   };
 
-  const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
-    const groups = rows.reduce((acc, row, index) => {
-      // Skip the last row if it's unactivated
-      if (index === rows.length - 1 && row.data.every(cell => cell === null)) return acc;
-  
-      row.data.forEach((value, colIndex) => {
-        if (value !== null && row.assignment === colIndex) {
-          if (!acc[colIndex]) acc[colIndex] = [];
-          acc[colIndex].push(value);
-        }
-      });
-      return acc;
-    }, {} as Record<number, number[]>);
-  
-    return userData.columnNames.map((_, index) => {
-      const group = groups[index] || [];
-      return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : null;
-    });
-  };
-
   const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, userData.columnNames]);
 
   const renderRows = useMemo(() => {
@@ -137,15 +207,13 @@ export default function DataInput() {
         row={row}
         index={index}
         updateCell={updateCell}
-        toggleAssignment={toggleAssignment}
+        setAssignment={setAssignment}
         addRow={addRow}
         deleteRow={deleteRow}
         isUnactivated={index === dataToDisplay.length - 1}
-        controlColumnIndex={userData.controlColumnIndex}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
         isCollapsed={isCollapsed}
-        mode={mode}
-        animationType={animationType}
+        columnNames={userData.columnNames}
       />
     ));
 
@@ -163,40 +231,10 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, isSimulating, mode, animationType, userData.controlColumnIndex]);
-
-  const toggleMode = () => {
-    setMode(prevMode => prevMode === 'highlight' ? 'cover' : 'highlight');
-  };
-
-  const toggleAnimationType = () => {
-    setAnimationType(prevType => prevType === 'flap' ? 'slider' : 'flap');
-  };
+  }, [dataToDisplay, isCollapsed, isSimulating]);
 
   return (
     <div className="w-full max-w-4xl mx-auto text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
-      {showModeButtons && (
-      <div className="flex-shrink-0 flex justify-between items-center mb-4">
-        <div className="flex space-x-2">
-          
-          <>
-            <button
-              onClick={toggleMode}
-              className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
-            >
-              {mode}
-            </button>
-            <button
-              onClick={toggleAnimationType}
-              className="px-3 py-1 bg-light-accent dark:bg-dark-accent rounded"
-            >
-              {animationType}
-            </button>
-          </>
-          
-        </div>
-      </div>
-      )}
   
       <motion.div 
          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
@@ -234,12 +272,21 @@ export default function DataInput() {
                     newEditingColumnNames[index] = true;
                     setEditingColumnNames(newEditingColumnNames);
                   }}
-                  color={index === userData.controlColumnIndex ? 'text-light-primary dark:text-dark-primary' : 'text-light-accent dark:text-dark-accent'}
+                  removeColumn={() => {removeColumn(index)}}
+                  color={index === 0 ? 'text-light-primary dark:text-dark-primary' : 'text-light-accent dark:text-dark-accent'}
+                  removable={userData.columnNames.length > 2}
                 />
               </div>
             ))}
           </div>
-          <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div>
+          {/* <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div> */}
+          <button 
+            onClick={() => {addColumn("New Column")}}
+            className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
+            aria-label="Add column"
+          >
+            <Icons.Add size={4}/>
+          </button>
           <div className="w-14 flex-shrink-0 flex justify-end items-center space-x-1 pr-1">
           </div>
         </div>

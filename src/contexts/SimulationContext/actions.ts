@@ -25,19 +25,24 @@ export const updateCell = (rowIndex: number, columnIndex: number, value: number 
   payload: { rowIndex, columnIndex, value },
 });
 
-export const toggleAssignment = (rowIndex: number): SimulationAction => ({
-  type: 'TOGGLE_ASSIGNMENT',
-  payload: rowIndex,
-});
-
-export const setControlColumn = (index: number): SimulationAction => ({
-  type: 'SET_CONTROL_COLUMN',
-  payload: index,
+export const setAssignment = (rowIndex: number, assignment: number | null): SimulationAction => ({
+  type: 'SET_ASSIGNMENT',
+  payload: { rowIndex, assignment },
 });
 
 export const renameColumn = (index: number, newName: string): SimulationAction => ({
   type: 'RENAME_COLUMN',
   payload: { index, newName },
+});
+
+export const addColumn = (columnName: string): SimulationAction => ({
+  type: 'ADD_COLUMN',
+  payload: columnName,
+});
+
+export const removeColumn = (columnIndex: number): SimulationAction => ({
+  type: 'REMOVE_COLUMN',
+  payload: columnIndex,
 });
 
 export const setSimulationSpeed = (speed: number): SimulationAction => ({

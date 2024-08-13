@@ -10,7 +10,7 @@ interface IconProps {
 }
 
 const SvgIcon: React.FC<IconProps & React.SVGProps<SVGSVGElement>> = ({ 
-  size = 5, 
+  size = null, 
   color = 'currentColor', 
   className = '', 
   onClick,
@@ -25,7 +25,7 @@ const SvgIcon: React.FC<IconProps & React.SVGProps<SVGSVGElement>> = ({
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className={`h-${size} w-${size} ${className}`}
+    className={`h-${size ?? 'full'} w-${size ?? 'full'} ${className}`}
     onClick={onClick}
     {...props}
   >

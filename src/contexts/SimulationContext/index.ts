@@ -17,7 +17,7 @@ export * from './actions';
 export * from './types';
 
 export {
-  createNewRow,
+  emptyRow,
   rank,
   shuffleArray,
   filterValidRows,
@@ -26,7 +26,8 @@ export {
   validateSelectedTestStatistic,
   validateTotalSimulations,
   validatePValueType,
-  createActionResult
+  createActionResult,
+  calculateColumnAverages
 } from './utils';
 
 export {

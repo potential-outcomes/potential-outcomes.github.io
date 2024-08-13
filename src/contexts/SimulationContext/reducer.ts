@@ -1,7 +1,7 @@
 // contexts/SimulationContext/reducer.ts
 
 import { SimulationState, SimulationAction, UserDataState } from './types';
-import { createNewRow as emptyRow, filterValidRows, validateSimulationSpeed, validateSelectedTestStatistic, validateTotalSimulations, validatePValueType } from './utils';
+import { emptyRow, filterValidRows, validateSimulationSpeed, validateSelectedTestStatistic, validateTotalSimulations, validatePValueType } from './utils';
 
 export const simulationReducer = (state: SimulationState, action: SimulationAction): SimulationState => {
   const updateHistory = (newUserData: UserDataState): Partial<SimulationState> => ({
@@ -17,7 +17,6 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
     case 'CLEAR_USER_DATA':
         const initialUserData: UserDataState = {
           rows: [{ data: [null, null], assignment: 0 }],
-          controlColumnIndex: 0,
           columnNames: ["Control", "Treatment"],
         };
         return { 
@@ -27,9 +26,11 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         };
 
     case 'ADD_ROW':
-        console.log('ADD_ROW');
-      const newRow = emptyRow(state.data.userData.columnNames.length, 0);
-      const newRows = [...state.data.userData.rows, newRow];
+      const newRow = emptyRow(state.data.userData.columnNames.length);
+
+      const newRows = [...state.data.userData.rows];
+      newRows[newRows.length - 1].assignment = 1;
+      newRows.push(newRow);
       return { ...state, ...updateHistory({ ...state.data.userData, rows: newRows }) };
 
     case 'DELETE_ROW':
@@ -56,7 +57,7 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
           });
         
         if (isLastRow && value !== null) {
-          updatedRows.push(emptyRow(state.data.userData.columnNames.length, 0));
+          updatedRows.push(emptyRow(state.data.userData.columnNames.length));
         }
       
         const updatedUserData = {
@@ -66,17 +67,18 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         return { ...state, ...updateHistory(updatedUserData) };
       }
       
-      case 'TOGGLE_ASSIGNMENT': {
-        const rowIndex = action.payload;
+      case 'SET_ASSIGNMENT': {
+        const { rowIndex, assignment } = action.payload;
+        console.log('setting assignment to: ', assignment)
         const isLastRow = rowIndex === state.data.userData.rows.length - 1;
         const updatedRows = state.data.userData.rows.map((row, index) => 
           index === rowIndex
-            ? { ...row, assignment: (row.assignment + 1) % state.data.userData.columnNames.length }
+            ? { ...row, assignment: assignment == null ? assignment : (assignment % state.data.userData.columnNames.length) }
             : row
         );
       
         if (isLastRow) {
-          updatedRows.push(emptyRow(state.data.userData.columnNames.length, 0));
+          updatedRows.push(emptyRow(state.data.userData.columnNames.length));
         }
       
         const newUserData = {
@@ -86,14 +88,50 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         return { ...state, ...updateHistory(newUserData) };
       }
 
-    case 'SET_CONTROL_COLUMN':
-      return { ...state, ...updateHistory({ ...state.data.userData, controlColumnIndex: action.payload }) };
-
     case 'RENAME_COLUMN':
       const { index, newName } = action.payload;
       const newColumnNames = [...state.data.userData.columnNames];
       newColumnNames[index] = newName;
       return { ...state, ...updateHistory({ ...state.data.userData, columnNames: newColumnNames }) };
+
+    case 'ADD_COLUMN':
+      const newColumnName = action.payload;
+      const rowsWithNewColumn = state.data.userData.rows.map(row => ({
+        ...row,
+        data: [...row.data, null],
+      }));
+
+      return {
+        ...state,
+        ...updateHistory({
+          ...state.data.userData,
+          rows: rowsWithNewColumn,
+          columnNames: [...state.data.userData.columnNames, newColumnName],
+        }),
+      };
+
+    case 'REMOVE_COLUMN':
+      const columnIndexToRemove = action.payload;
+      if (state.data.userData.columnNames.length <= 2) {
+        // Prevent removing columns if there are only two left
+        return state;
+      }
+      const rowsWithColumnRemoved = state.data.userData.rows.map(row => ({
+        ...row,
+        data: row.data.filter((_, index) => index !== columnIndexToRemove),
+        assignment: row.assignment === columnIndexToRemove ? null : 
+                    (row.assignment != null && row.assignment > columnIndexToRemove ? row.assignment - 1 : row.assignment),
+      }));
+      const updatedColumnNames = state.data.userData.columnNames.filter((_, index) => index !== columnIndexToRemove);
+
+      return {
+        ...state,
+        ...updateHistory({
+          ...state.data.userData,
+          rows: rowsWithColumnRemoved,
+          columnNames: updatedColumnNames,
+        }),
+      };
 
     case 'SET_SIMULATION_SPEED':
       if (validateSimulationSpeed(action.payload)) {

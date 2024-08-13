@@ -19,7 +19,7 @@ const ApplyEffectButton: React.FC = () => {
 
   const checkWandCondition = (rows: typeof userData.rows): boolean => {
     return rows.some((row, index) => {
-      if (index === rows.length - 1) return false; // Ignore the last row
+      if (row.assignment === null) return false;
       const nonNullCount = row.data.filter(cell => cell !== null).length;
       return nonNullCount === 1 && row.data[row.assignment] !== null;
     });
@@ -61,7 +61,7 @@ const ApplyEffectButton: React.FC = () => {
     const newData = {
       ...userData,
       rows: userData.rows.map((row, rowIndex) => {
-        if (rowIndex === userData.rows.length - 1) return row;
+        if (row.assignment === null) return row;
   
         const newData = [...row.data];
   
@@ -136,7 +136,7 @@ const ApplyEffectButton: React.FC = () => {
           <div className="p-3 space-y-3">
             <div className="space-y-1">
               <label className="block text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                No effect column
+                Baseline
               </label>
               <select
                 value={noEffectColumn}

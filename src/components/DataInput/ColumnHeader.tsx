@@ -1,4 +1,3 @@
-// ColumnHeader.tsx
 import React from 'react';
 import { Icons } from '../common/Icons';
 import { Tooltip } from '../common/Tooltip';
@@ -9,6 +8,8 @@ interface ColumnHeaderProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur: () => void;
   onClick: () => void;
+  removeColumn: () => void;
+  removable: boolean;
   color: string;
 }
 
@@ -18,10 +19,12 @@ export function ColumnHeader({
   onChange,
   onBlur,
   onClick,
+  removeColumn,
+  removable,
   color
 }: ColumnHeaderProps) {
   return (
-    <div className={`flex items-center justify-center h-full px-2 ${color}`}>
+    <div className={`relative flex items-center justify-center h-full px-2 ${color}`}>
       {isEditing ? (
         <input
           type="text"
@@ -32,12 +35,27 @@ export function ColumnHeader({
           autoFocus
         />
       ) : (
-        <Tooltip content="Click to edit column name">
-          <div className="flex items-center justify-center w-full cursor-pointer" onClick={onClick}>
-            <span className="truncate text-center">{value}</span>
-            <Icons.Edit size={4} className="ml-1 opacity-70 hover:opacity-100" />
+        <>
+          <div className="flex items-center">
+            <span 
+              className="truncate cursor-text"
+              onClick={onClick}
+            >
+              {value}
+            </span>
+            { removable && 
+            <Tooltip content="Delete column" position="bottom" className='w-5 h-5'>
+              <button 
+                onClick={removeColumn}
+                className={`ml-1 ${color} hover:text-light-error dark:hover:text-dark-error focus:outline-none`}
+                aria-label="Delete column"
+              >
+                <Icons.Clear/>
+              </button>
+            </Tooltip>
+            }
           </div>
-        </Tooltip>
+        </>
       )}
     </div>
   );

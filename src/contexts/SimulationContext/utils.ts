@@ -5,9 +5,9 @@ import { ExperimentalTestStatistic, TestStatisticFunction, TestStatisticMeta } f
 import { sum } from 'mathjs';
 
 // Utility function to create a new row
-export const createNewRow = (columnCount: number, assignment: number): DataRow => ({
+export const emptyRow = (columnCount: number): DataRow => ({
   data: Array(columnCount).fill(null),
-  assignment,
+  assignment: null
 });
 
 // Utility function to calculate ranks for Wilcoxon Rank-Sum test
@@ -27,6 +27,27 @@ export const rank = (values: number[]): number[] => {
 
   return ranks;
 };
+
+export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
+  const groups = rows.reduce((acc, row, index) => {
+    // Skip the last row if it's unactivated
+    if (index === rows.length - 1 && row.data.every(cell => cell === null)) return acc;
+
+    row.data.forEach((value, colIndex) => {
+      if (value !== null && row.assignment === colIndex) {
+        if (!acc[colIndex]) acc[colIndex] = [];
+        acc[colIndex].push(value);
+      }
+    });
+    return acc;
+  }, {} as Record<number, number[]>);
+
+  return rows[0].data.map((_, index) => {
+    const group = groups[index] || [];
+    return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : null;
+  });
+};
+
 
 // Utility function to shuffle an array (used in simulation)
 export const shuffleArray = <T>(array: T[]): T[] => {
@@ -48,6 +69,7 @@ export const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
+    if (row.assignment === null) return acc;
     const value = row.data[row.assignment];
     if (typeof value === 'number') {
       if (!acc[row.assignment]) acc[row.assignment] = [];
@@ -67,6 +89,7 @@ export const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
+    if (row.assignment === null) return acc;
     const value = row.data[0];
     if (typeof value === 'number') {
       if (!acc[row.assignment]) acc[row.assignment] = [];

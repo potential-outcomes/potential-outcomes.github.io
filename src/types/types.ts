@@ -2,5 +2,5 @@
 
 export interface DataRow {
     data: (number | null)[];
-    assignment: number;
+    assignment: number | null;
   }

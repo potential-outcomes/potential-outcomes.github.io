@@ -11,7 +11,6 @@ export { ExperimentalTestStatistic } from './testStatistics';
   
   export interface UserDataState {
     rows: DataRow[];
-    controlColumnIndex: number;
     columnNames: string[];
   }
   
@@ -32,9 +31,10 @@ export { ExperimentalTestStatistic } from './testStatistics';
     addRow: () => ActionResult;
     deleteRow: (index: number) => ActionResult;
     updateCell: (rowIndex: number, columnIndex: number, value: number | null) => ActionResult;
-    toggleAssignment: (rowIndex: number) => ActionResult;
-    setControlColumn: (index: number) => ActionResult;
+    setAssignment: (rowIndex: number, assignment: number | null) => ActionResult;
     renameColumn: (index: number, newName: string) => ActionResult;
+    addColumn: (name: string) => ActionResult;
+    removeColumn: (index: number) => ActionResult;
   }
   
   export interface SimulationSettingsContext {
@@ -83,9 +83,11 @@ export { ExperimentalTestStatistic } from './testStatistics';
     | { type: 'ADD_ROW' }
     | { type: 'DELETE_ROW'; payload: number }
     | { type: 'UPDATE_CELL'; payload: { rowIndex: number; columnIndex: number; value: number | null } }
-    | { type: 'TOGGLE_ASSIGNMENT'; payload: number }
+    | { type: 'SET_ASSIGNMENT'; payload: { rowIndex: number; assignment: number | null } }
     | { type: 'SET_CONTROL_COLUMN'; payload: number }
     | { type: 'RENAME_COLUMN'; payload: { index: number; newName: string } }
+    | { type: 'ADD_COLUMN'; payload: string }
+    | { type: 'REMOVE_COLUMN'; payload: number }
     | { type: 'SET_SIMULATION_SPEED'; payload: number }
     | { type: 'SET_SELECTED_TEST_STATISTIC'; payload: ExperimentalTestStatistic }
     | { type: 'SET_TOTAL_SIMULATIONS'; payload: number }

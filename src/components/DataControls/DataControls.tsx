@@ -36,7 +36,6 @@ const DataControls: React.FC = () => {
           
           setUserData({
             rows: [...rows, { data: Array(dataColumnCount).fill(null), assignment: 0 }],
-            controlColumnIndex: 0,
             columnNames: userData.columnNames
           });
         }

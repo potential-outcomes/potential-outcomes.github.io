@@ -8,7 +8,6 @@ import {
     ExperimentalTestStatistic
 } from '@/contexts/SimulationContext';
 import { ActionButton } from './ActionButton';
-import { TreatmentEffectInput } from './TreatmentEffectInput';
 import { Icons } from '../common/Icons';
 
 export const SimulationControls: React.FC = () => {
@@ -61,40 +60,6 @@ export const SimulationControls: React.FC = () => {
         } else {
             setInputTotalSimulations(totalSimulations.toString());
         }
-    };
-
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (isSimulating) return;
-      const file = event.target.files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const text = e.target?.result;
-          if (typeof text === 'string') {
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            
-            const rows = lines.map(line => {
-              const values = line.split(',').map(value => value.trim());
-              const assignment = parseInt(values.pop() || '0', 10);
-              const data = values.map(value => value === '' ? null : Number(value));
-              
-              return {
-                data,
-                assignment
-              };
-            });
-  
-            const dataColumnCount = Math.max(...rows.map(row => row.data.length));
-            
-            setUserData({
-              rows: [...rows, { data: Array(dataColumnCount).fill(null), assignment: 0 }],
-              controlColumnIndex: 0,
-              columnNames: userData.columnNames
-            });
-          }
-        };
-        reader.readAsText(file);
-      }
     };
 
     const getSimulationButtonProps = (isSimulating: boolean, simulationResults: { length: number } | null, totalSimulations: number) => {
