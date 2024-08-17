@@ -7,9 +7,13 @@ export const setUserData = (userData: UserDataState): SimulationAction => ({
   payload: userData,
 });
 
-export const clearUserData = (): SimulationAction => ({
-  type: 'CLEAR_USER_DATA',
+export const resetUserData = (): SimulationAction => ({
+  type: 'RESET_USER_DATA',
 });
+
+export const emptyUserData = (): SimulationAction => ({
+  type: 'EMPTY_USER_DATA',
+})
 
 export const addRow = (): SimulationAction => ({
   type: 'ADD_ROW',

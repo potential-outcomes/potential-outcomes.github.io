@@ -11,19 +11,17 @@ interface OverlayProps {
   children: ReactNode[];
   setAssignment?: (assignment: number | null) => void;
   index: number;
+  columnColors: string[];
 }
 
 const MIN_SHADOW = 10;
 const MAX_SHADOW = 13;
 const SHADOW_RANGE = MAX_SHADOW - MIN_SHADOW;
 
-const getParentStyle = (position: number, assignment: number | null): string => {
+const getParentStyle = (position: number, assignment: number | null, color: string): string => {
   if (assignment === null) return '';
   const isBold = position !== assignment ? 'font-medium' : '';
-  const textColor = position % 2 === 1
-    ? 'text-light-accent dark:text-dark-accent'
-    : 'text-light-primary dark:text-dark-primary';
-  return `${isBold} ${textColor} text-shadow-inherit`;
+  return `${isBold} ${color} text-shadow-inherit`;
 };
 
 const createGrainyTextureSVG = (
@@ -59,15 +57,16 @@ interface SliderPanelProps {
   assignment: number | null;
   setAssignment?: (assignment: number | null) => void;
   numChildren: number;
+  color: string;
 }
 
-const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignment, setAssignment, numChildren }) => (
+const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignment, setAssignment, numChildren, color }) => (
   <div 
     className={`h-full bg-slate-950/80 border-slate-700/60 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center cursor-text ${
       isLeft ? 'border-r-2 justify-end pr-2' : 'border-l-2 pl-2'
     } ${
       assignment === null ? (isLeft ? 'mr-[60%]' : 'ml-[60%]') : ''
-    } transition-[margin] duration-700`}
+    } transition-[margin] duration-700 ${color}`}
     style={{
       boxShadow: `${isLeft ? shadowSize : -shadowSize}px 0 7px -1px rgb(0 0 0 / 0.4)`,
       width: `${(100.0 * (numChildren)) / ((2 * numChildren) + 1)}%`
@@ -81,7 +80,6 @@ const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignmen
       }}
     />
     <div 
-      // className={`absolute text-white opacity-25 ${isLeft ? '-mr-2' : ''} cursor-pointer relative z-50 pointer-events-auto`}
       className={`absolute text-white opacity-25 cursor-pointer z-50 pointer-events-auto`}
       onClick={() => setAssignment?.(assignment == null ? assignment : isLeft ? Math.max(0, assignment - 1) : Math.min(numChildren - 1, assignment + 1))}
     >
@@ -96,13 +94,11 @@ export const Overlay: React.FC<OverlayProps> = ({
   className = '',
   children,
   setAssignment,
-  index
+  index,
+  columnColors
 }) => {
   const x = useMotionValue('0');
   const [leftShadow, rightShadow] = useBoxShadow(x);
-
-  // log assignment and length of children
-  // console.log('index', index, 'assignment', assignment, 'children.length', children.length)
 
   const renderSliderAnimation = () => (
     <div 
@@ -111,13 +107,27 @@ export const Overlay: React.FC<OverlayProps> = ({
         width: `${(100 / children.length) * ((2 * children.length) + 1)}%`,
       }}
     >
-      <SliderPanel isLeft={true} shadowSize={leftShadow} assignment={assignment} setAssignment={setAssignment} numChildren={children.length}/>
+      <SliderPanel 
+        isLeft={true} 
+        shadowSize={leftShadow} 
+        assignment={assignment} 
+        setAssignment={setAssignment} 
+        numChildren={children.length}
+        color={assignment !== null ? columnColors[assignment] : ''}
+      />
       <div className={`h-full -mx-[35px] z-0`} 
       style={{
         width: `${100 / ((2 * children.length) + 1)}%`
       }}
       />
-      <SliderPanel isLeft={false} shadowSize={rightShadow} assignment={assignment} setAssignment={setAssignment} numChildren={children.length}/>
+      <SliderPanel 
+        isLeft={false} 
+        shadowSize={rightShadow} 
+        assignment={assignment} 
+        setAssignment={setAssignment} 
+        numChildren={children.length}
+        color={assignment !== null ? columnColors[assignment] : ''}
+      />
     </div>
   );
 
@@ -126,7 +136,7 @@ export const Overlay: React.FC<OverlayProps> = ({
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full h-[98%] flex rounded-md overflow-hidden">
           {children.map((child, index) => (
-            <div key={index} className={`w-[50%] flex items-center justify-center transition-all duration-300 ${getParentStyle(index, assignment)}`}>
+            <div key={index} className={`w-[50%] flex items-center justify-center transition-all duration-300 ${getParentStyle(index, assignment, columnColors[index])}`}>
               {child}
             </div>
           ))}

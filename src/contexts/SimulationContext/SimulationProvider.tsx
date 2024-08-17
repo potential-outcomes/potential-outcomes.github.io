@@ -1,6 +1,6 @@
 // contexts/SimulationContext/SimulationProvider.tsx
 
-import React, { createContext, useReducer, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import { simulationReducer } from './reducer';
 import * as actions from './actions';
 import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, ExperimentalTestStatistic } from './types';
@@ -12,11 +12,13 @@ export const SimulationContext = createContext<SimulationContextType | undefined
 const initialState: SimulationState = {
   data: {
     userData: {
-      rows: [{ data: [null, null], assignment: null }],
-      columnNames: ["Control", "Treatment"],
+      rows: [{ data: [null, null], assignment: null , block: null}],
+      columns: [{name: "Control", color: "text-green-500" }, {name: "Treatment", color: "text-blue-500"}],
+      colorStack: ['text-yellow-500', 'text-purple-500']
     },
     setUserData: () => ({ success: false, error: 'Not implemented' }),
-    clearUserData: () => ({ success: false, error: 'Not implemented' }),
+    resetUserData: () => ({ success: false, error: 'Not implemented' }),
+    emptyUserData: () => ({success: false, error: 'Not implemented'}),
     addRow: () => ({ success: false, error: 'Not implemented' }),
     deleteRow: () => ({ success: false, error: 'Not implemented' }),
     updateCell: () => ({ success: false, error: 'Not implemented' }),
@@ -56,10 +58,35 @@ const initialState: SimulationState = {
   future: [],
 };
 
+const initialColorStack = [
+  
+  // 'text-pink-500',
+  // 'text-indigo-500',
+  // 'text-red-500',
+  // 'text-orange-500',
+];
+
 export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [state, dispatch] = useReducer(simulationReducer, initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
   const simulationSpeedRef = useRef<number>(state.settings.simulationSpeed);
+
+  // const [columnColors, setColumnColors] = useState<string[]>(() => {
+  //   const colors: string[] = [];
+  //   const tempColorStack = [...colorStack];
+
+  //   for (let i = 0; i < state.data.userData.columnNames.length; i++) {
+  //     if (tempColorStack.length > 0) {
+  //       colors.push(tempColorStack.pop()!);
+  //     } else {
+  //       // If we run out of colors, start reusing them from the beginning
+  //       colors.push(initialColorStack[i % initialColorStack.length]);
+  //     }
+  //   }
+
+  //   setColorStack(tempColorStack);
+  //   return colors;
+  // });
 
   const dispatchWithResult = useCallback(<T extends any[]>(
     actionCreator: (...args: T) => ReturnType<typeof actions[keyof typeof actions]>
@@ -78,7 +105,8 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   }, []);
 
   const setUserData = dispatchWithResult(actions.setUserData);
-  const clearUserData = dispatchWithResult(actions.clearUserData);
+  const resetUserData = dispatchWithResult(actions.resetUserData);
+  const emptyUserData = dispatchWithResult(actions.emptyUserData);
   const addRow = dispatchWithResult(actions.addRow);
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const updateCell = dispatchWithResult(actions.updateCell);
@@ -214,7 +242,8 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     data: {
       ...state.data,
       setUserData,
-      clearUserData,
+      resetUserData,
+      emptyUserData,
       addRow,
       deleteRow,
       updateCell,

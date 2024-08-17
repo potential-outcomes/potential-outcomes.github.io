@@ -6,6 +6,7 @@ import {
   useSimulationData, 
   useSimulationState,
   DataRow,
+  Column,
   calculateColumnAverages,
   emptyRow
 } from '@/contexts/SimulationContext';
@@ -22,17 +23,24 @@ export const COLUMN_PROPORTIONS = {
   actions: 1
 };
 
-const ColumnAverages: React.FC<{ averages: (number | null)[], columnNames: string[] }> = ({ averages, columnNames }) => (
+interface ColumnAveragesProps {
+  averages: (number | null)[];
+  columnColors: string[];
+}
+
+const ColumnAverages: React.FC<ColumnAveragesProps> = ({ averages, columnColors }) => (
   <div className="flex items-stretch h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-t-2 border-light-primary dark:border-dark-primary">
     <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">Avg</div>
     <div className="flex-grow flex">
       {averages.map((average, index) => (
-        <div key={index} className="flex-1 flex items-center justify-center font-medium">
+        <div 
+          key={index} 
+          className={`flex-1 flex items-center justify-center font-medium ${columnColors[index]}`}
+        >
           {average !== null ? average.toFixed(2) : "--"}
         </div>
       ))}
     </div>
-    {/* <div className="w-16 flex-shrink-0" /> */}
     <div className="w-14 flex-shrink-0" />
   </div>
 );
@@ -47,7 +55,7 @@ interface TableRowProps {
   isUnactivated: boolean;
   toggleCollapse?: () => void;
   isCollapsed?: boolean;
-  columnNames: string[];
+  columns: Column[];
 }
 
 const TableRow: React.FC<TableRowProps> = ({ 
@@ -60,11 +68,10 @@ const TableRow: React.FC<TableRowProps> = ({
   isUnactivated,
   toggleCollapse,
   isCollapsed,
-  columnNames
+  columns,
 }) => {
   return (
     <div className={`flex items-stretch w-full h-14 py-2 bg-light-background dark:bg-dark-background ${isUnactivated ? 'sticky bottom-0' : ''}`}>
-      {/* Index Column */}
       <div className="flex items-center justify-center w-12 flex-shrink-0 text-light-text-secondary dark:text-dark-text-secondary">
         {isUnactivated && toggleCollapse ? (
           <button
@@ -79,7 +86,6 @@ const TableRow: React.FC<TableRowProps> = ({
         )}
       </div>
 
-      {/* Data Column */}
       <div className="flex-grow h-full z-0">
         <Overlay
           assignment={row.assignment}
@@ -90,30 +96,15 @@ const TableRow: React.FC<TableRowProps> = ({
                 key={i}
                 value={row.data[i]}
                 onChange={(value) => updateCell(index, i, value)}
-                delayedPlaceholder={row.assignment === i ? columnNames[i] : "?"}
+                delayedPlaceholder={row.assignment === i ? columns[i].name : "?"}
               />
             ))
           }
           index={index}
+          columnColors={columns.map((column) => column.color)}
         />
       </div>
 
-      {/* Assignment Toggle Column */}
-      {/* <div className="flex items-center justify-center w-16 flex-shrink-0">
-        <button
-          onClick={() => setAssignment(index, row.assignment == null ? row.assignment : (row.assignment + 1) % row.data.length)}
-          className={`w-6 h-6 rounded-md transition-colors duration-300
-            ${isUnactivated 
-              ? 'bg-light-background-tertiary dark:bg-dark-background-tertiary' 
-              : row.assignment === 1
-                ? 'bg-light-accent dark:bg-dark-accent' 
-                : 'bg-light-primary dark:bg-dark-primary'}
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-primary dark:focus:ring-dark-primary`}
-          aria-label={row.assignment === 1 ? "Treatment assigned" : "Control assigned"}
-        />
-      </div> */}
-
-      {/* Action Column */}
       <div className="flex items-center justify-center w-14 flex-shrink-0">
         {isUnactivated ? (
           <button 
@@ -125,7 +116,7 @@ const TableRow: React.FC<TableRowProps> = ({
           </button>
         ) : (
           <button 
-            onClick={() => deleteRow(index)}
+            onClick={() => {deleteRow(index)}}
             className="text-light-text-tertiary hover:text-light-error dark:text-dark-text-tertiary dark:hover:text-dark-error focus:outline-none"
             aria-label="Delete row"
           >
@@ -155,8 +146,7 @@ export default function DataInput() {
   } = useSimulationData();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columnNames.map(() => false));
-
+  const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columns.map(() => false));
   const [pulsate, setPulsate] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -196,7 +186,32 @@ export default function DataInput() {
     renameColumn(index, e.target.value.slice(0, 20));  // Limit to 20 characters
   };
 
-  const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, userData.columnNames]);
+  // const handleAddColumn = () => {
+  //   if (colorStack.length === 0) {
+  //     console.error("No more colors available");
+  //     return;
+  //   }
+
+  //   const newColor = colorStack[colorStack.length - 1];
+  //   const newColumnName = "New Column";
+
+  //   addColumn(newColumnName);
+  //   setColorStack(prevStack => prevStack.slice(0, -1));
+  //   setColumnColors(prevColors => [...prevColors, newColor]); // Add the new color to columnColors
+  // };
+
+  // const handleRemoveColumn = (index: number) => {
+  //   const removedColor = columnColors[index];
+  //   removeColumn(index);
+  //   setColorStack(prevStack => [...prevStack, removedColor]);
+  //   setColumnColors(prevColors => {
+  //     const newColors = [...prevColors];
+  //     newColors.splice(index, 1); // Remove the color at the specified index
+  //     return newColors;
+  //   });
+  // };
+
+  const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, userData.columns]);
 
   const renderRows = useMemo(() => {
     const shouldIgnoreCollapse = dataToDisplay.length <= 5;
@@ -213,7 +228,7 @@ export default function DataInput() {
         isUnactivated={index === dataToDisplay.length - 1}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
         isCollapsed={isCollapsed}
-        columnNames={userData.columnNames}
+        columns={userData.columns}
       />
     ));
 
@@ -235,7 +250,6 @@ export default function DataInput() {
 
   return (
     <div className="w-full max-w-4xl mx-auto text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
-  
       <motion.div 
          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
@@ -255,11 +269,11 @@ export default function DataInput() {
         <div className="flex-shrink-0 flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
           <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
           <div className="flex-grow flex">
-            {userData.columnNames.map((name, index) => (
+            {userData.columns.map((column, index) => (
               <div key={index} className="flex-1">
                 <ColumnHeader
                   isEditing={editingColumnNames[index]}
-                  value={name}
+                  value={column.name}
                   onChange={(e) => handleColumnNameChange(index, e)}
                   onBlur={() => {
                     const newEditingColumnNames = [...editingColumnNames];
@@ -272,23 +286,23 @@ export default function DataInput() {
                     newEditingColumnNames[index] = true;
                     setEditingColumnNames(newEditingColumnNames);
                   }}
-                  removeColumn={() => {removeColumn(index)}}
-                  color={index === 0 ? 'text-light-primary dark:text-dark-primary' : 'text-light-accent dark:text-dark-accent'}
-                  removable={userData.columnNames.length > 2}
+                  removeColumn={() => removeColumn(index)}
+                  color={column.color}
+                  removable={userData.columns.length > 2}
                 />
               </div>
             ))}
           </div>
-          {/* <div className="w-16 flex-shrink-0 flex items-center justify-center font-medium">Assign</div> */}
-          <button 
-            onClick={() => {addColumn("New Column")}}
-            className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
-            aria-label="Add column"
-          >
-            <Icons.Add size={4}/>
-          </button>
-          <div className="w-14 flex-shrink-0 flex justify-end items-center space-x-1 pr-1">
-          </div>
+          {userData.colorStack.length > 0 && (
+            <button 
+              onClick={() => addColumn("New Column")}
+              className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
+              aria-label="Add column"
+            >
+              <Icons.Add size={4}/>
+            </button>
+          )}
+          <div className="w-8 flex-shrink-0 flex justify-end items-center space-x-1 pr-1"/>
         </div>
         <div 
           ref={scrollContainerRef}
@@ -297,7 +311,7 @@ export default function DataInput() {
           {renderRows}
         </div>
         <div className="flex-shrink-0">
-          <ColumnAverages averages={columnAverages} columnNames={userData.columnNames} />
+          <ColumnAverages averages={columnAverages} columnColors={userData.columns.map((column) => column.color)}/>
         </div>
       </motion.div>
     </div>

@@ -3,4 +3,5 @@
 export interface DataRow {
     data: (number | null)[];
     assignment: number | null;
+    block: string | null;
   }

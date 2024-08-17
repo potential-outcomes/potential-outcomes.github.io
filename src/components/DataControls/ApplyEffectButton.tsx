@@ -7,11 +7,10 @@ import { useSimulationState, useSimulationData } from '@/contexts/SimulationCont
 const ApplyEffectButton: React.FC = () => {
   const { userData, isSimulating } = useSimulationState();
   const { setUserData } = useSimulationData();
-  const [effect, setEffect] = useState<number>(0);
   const [showEffectPopup, setShowEffectPopup] = useState(false);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [noEffectColumn, setNoEffectColumn] = useState<number>(0);
-  const [effectColumns, setEffectColumns] = useState<number[]>([1]);
+  const [effectSizes, setEffectSizes] = useState<{ [key: number]: string }>({});
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isWandActive, setIsWandActive] = useState(false);
@@ -57,6 +56,14 @@ const ApplyEffectButton: React.FC = () => {
 
   const applyTreatmentEffect = () => {
     if (isSimulating) return;
+
+    const effectColumns = Object.keys(effectSizes).map(Number);
+
+    // Check if all effect sizes are inputted
+    if (!effectColumns.every(col => effectSizes[col] && effectSizes[col].trim() !== '')) {
+      alert('Please input all effect sizes before applying.');
+      return;
+    }
   
     const newData = {
       ...userData,
@@ -69,11 +76,13 @@ const ApplyEffectButton: React.FC = () => {
           const referenceValue = newData[noEffectColumn] as number;
           effectColumns.forEach(effectCol => {
             if (overwriteExisting || newData[effectCol] === null) {
+              const effect = parseFloat(effectSizes[effectCol]);
               newData[effectCol] = referenceValue + effect;
             }
           });
         } else if (effectColumns.includes(row.assignment) && newData[row.assignment] !== null) {
           const effectValue = newData[row.assignment] as number;
+          const effect = parseFloat(effectSizes[row.assignment]);
           if (overwriteExisting || newData[noEffectColumn] === null) {
             newData[noEffectColumn] = effectValue - effect;
           }
@@ -87,37 +96,30 @@ const ApplyEffectButton: React.FC = () => {
     setShowEffectPopup(false);
   };
 
-  const handleEffectColumnToggle = (index: number) => {
-    setEffectColumns(prev => {
-      if (prev.includes(index)) {
-        // Prevent unchecking if it's the last effect column
-        if (prev.length === 1) return prev;
-        return prev.filter(col => col !== index);
-      } else {
-        return [...prev, index];
-      }
+  const handleNoEffectColumnChange = (newNoEffectColumn: number) => {
+    setNoEffectColumn(newNoEffectColumn);
+    setEffectSizes(sizes => {
+      const newSizes = { ...sizes };
+      delete newSizes[newNoEffectColumn];
+      return newSizes;
     });
   };
 
-  const handleNoEffectColumnChange = (newNoEffectColumn: number) => {
-    setNoEffectColumn(newNoEffectColumn);
-    // If the new no-effect column was previously an effect column, remove it
-    setEffectColumns(prev => {
-      const updated = prev.filter(col => col !== newNoEffectColumn);
-      // If removing the column leaves no effect columns, add the first available column
-      if (updated.length === 0) {
-        const firstAvailable = userData.columnNames.findIndex((_, index) => index !== newNoEffectColumn);
-        return [firstAvailable];
-      }
-      return updated;
-    });
+  const handleEffectSizeChange = (column: number, value: string) => {
+    setEffectSizes(prev => ({ ...prev, [column]: value }));
+  };
+
+  const isApplyEffectDisabled = () => {
+    const effectColumns = Object.keys(effectSizes).map(Number);
+    
+    return effectColumns.length === 0 || !effectColumns.every(col => effectSizes[col] && effectSizes[col].trim() !== '');
   };
 
   const wandColorClass = isWandActive ? 'text-yellow-400' : 'text-light-text-secondary dark:text-dark-text-secondary';
   const wandHoverClass = isWandActive ? 'hover:text-yellow-500' : 'hover:text-light-primary dark:hover:text-dark-primary';
 
   return (
-    <>
+    <div className="relative">
       <Tooltip content="Apply constant effect to unobserved">
         <button
           ref={buttonRef}
@@ -131,7 +133,7 @@ const ApplyEffectButton: React.FC = () => {
       {showEffectPopup && (
         <div 
           ref={popupRef}
-          className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-10 w-72 border border-gray-200 dark:border-gray-700"
+          className="absolute left-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-10 w-72 border border-gray-200 dark:border-gray-700"
         >
           <div className="p-3 space-y-3">
             <div className="space-y-1">
@@ -143,8 +145,8 @@ const ApplyEffectButton: React.FC = () => {
                 onChange={(e) => handleNoEffectColumnChange(Number(e.target.value))}
                 className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
               >
-                {userData.columnNames.map((name, index) => (
-                  <option key={index} value={index}>{name}</option>
+                {userData.columns.map((column, index) => (
+                  <option key={index} value={index}>{column.name}</option>
                 ))}
               </select>
             </div>
@@ -152,33 +154,22 @@ const ApplyEffectButton: React.FC = () => {
               <label className="block text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
                 Effect columns
               </label>
-              <div className="flex flex-wrap gap-2">
-                {userData.columnNames.map((name, index) => (
+              <ul className="space-y-2">
+                {userData.columns.map((column, index) => (
                   index !== noEffectColumn && (
-                    <label key={index} className="flex items-center space-x-1">
+                    <li key={index} className="flex items-center space-x-2">
+                      <span className="text-xs text-light-text-primary dark:text-dark-text-primary">{column.name}</span>
                       <input
-                        type="checkbox"
-                        checked={effectColumns.includes(index)}
-                        onChange={() => handleEffectColumnToggle(index)}
-                        className="form-checkbox h-3 w-3 text-light-primary dark:text-dark-primary rounded focus:ring-light-primary dark:focus:ring-dark-primary"
+                        type="number"
+                        value={effectSizes[index] || ''}
+                        onChange={(e) => handleEffectSizeChange(index, e.target.value)}
+                        className="flex-grow px-2 py-1 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
+                        placeholder="Effect size"
                       />
-                      <span className="text-xs text-light-text-primary dark:text-dark-text-primary">{name}</span>
-                    </label>
+                    </li>
                   )
                 ))}
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">
-                Effect Size:
-              </label>
-              <input
-                type="number"
-                value={effect}
-                onChange={(e) => setEffect(Number(e.target.value))}
-                className="flex-grow px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
-                placeholder="Enter size"
-              />
+              </ul>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-light-text-primary dark:text-dark-text-primary">
@@ -192,7 +183,12 @@ const ApplyEffectButton: React.FC = () => {
             <div className="pt-2">
               <button
                 onClick={applyTreatmentEffect}
-                className="w-full px-3 py-1.5 bg-light-primary dark:bg-dark-primary text-white text-sm rounded-md hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:outline-none focus:ring-2 focus:ring-light-primary-dark dark:focus:ring-dark-primary-light transition-colors duration-200"
+                disabled={isApplyEffectDisabled()}
+                className={`w-full px-3 py-1.5 text-white text-sm rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                  isApplyEffectDisabled()
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-light-primary dark:bg-dark-primary hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:ring-light-primary-dark dark:focus:ring-dark-primary-light'
+                }`}
               >
                 Apply Effect
               </button>
@@ -200,7 +196,7 @@ const ApplyEffectButton: React.FC = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

@@ -14,19 +14,34 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
     case 'SET_USER_DATA':
       return { ...state, ...updateHistory(action.payload) };
 
-    case 'CLEAR_USER_DATA':
+    case 'RESET_USER_DATA':
         const initialUserData: UserDataState = {
-          rows: [{ data: [null, null], assignment: 0 }],
-          columnNames: ["Control", "Treatment"],
+          rows: [{ data: [null, null], assignment: 0, block: null }],
+          columns: [{name: "Control", color: "text-green-500" }, {name: "Treatment", color: "text-blue-500"}],
+          colorStack: ['text-yellow-500', 'text-purple-500']
         };
         return { 
           ...state, 
           ...updateHistory(initialUserData),
           results: { simulationResults: [], pValue: null, observedStatistic: null }
         };
+    
+        case 'EMPTY_USER_DATA':
+          const emptyRows = state.data.userData.rows.map(row => ({
+            data: state.data.userData.columns.map(() => null),
+            assignment: row.assignment,
+            block: null
+          }));
+          return {
+            ...state,
+            ...updateHistory({
+              ...state.data.userData,
+              rows: emptyRows
+            })
+          };
 
     case 'ADD_ROW':
-      const newRow = emptyRow(state.data.userData.columnNames.length);
+      const newRow = emptyRow(state.data.userData.columns.length);
 
       const newRows = [...state.data.userData.rows];
       newRows[newRows.length - 1].assignment = 1;
@@ -57,7 +72,7 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
           });
         
         if (isLastRow && value !== null) {
-          updatedRows.push(emptyRow(state.data.userData.columnNames.length));
+          updatedRows.push(emptyRow(state.data.userData.columns.length));
         }
       
         const updatedUserData = {
@@ -73,12 +88,12 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         const isLastRow = rowIndex === state.data.userData.rows.length - 1;
         const updatedRows = state.data.userData.rows.map((row, index) => 
           index === rowIndex
-            ? { ...row, assignment: assignment == null ? assignment : (assignment % state.data.userData.columnNames.length) }
+            ? { ...row, assignment: assignment == null ? assignment : (assignment % state.data.userData.columns.length) }
             : row
         );
       
         if (isLastRow) {
-          updatedRows.push(emptyRow(state.data.userData.columnNames.length));
+          updatedRows.push(emptyRow(state.data.userData.columns.length));
         }
       
         const newUserData = {
@@ -88,50 +103,58 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         return { ...state, ...updateHistory(newUserData) };
       }
 
-    case 'RENAME_COLUMN':
-      const { index, newName } = action.payload;
-      const newColumnNames = [...state.data.userData.columnNames];
-      newColumnNames[index] = newName;
-      return { ...state, ...updateHistory({ ...state.data.userData, columnNames: newColumnNames }) };
-
-    case 'ADD_COLUMN':
-      const newColumnName = action.payload;
-      const rowsWithNewColumn = state.data.userData.rows.map(row => ({
-        ...row,
-        data: [...row.data, null],
-      }));
-
-      return {
-        ...state,
-        ...updateHistory({
-          ...state.data.userData,
-          rows: rowsWithNewColumn,
-          columnNames: [...state.data.userData.columnNames, newColumnName],
-        }),
-      };
-
-    case 'REMOVE_COLUMN':
-      const columnIndexToRemove = action.payload;
-      if (state.data.userData.columnNames.length <= 2) {
-        // Prevent removing columns if there are only two left
-        return state;
-      }
-      const rowsWithColumnRemoved = state.data.userData.rows.map(row => ({
-        ...row,
-        data: row.data.filter((_, index) => index !== columnIndexToRemove),
-        assignment: row.assignment === columnIndexToRemove ? null : 
-                    (row.assignment != null && row.assignment > columnIndexToRemove ? row.assignment - 1 : row.assignment),
-      }));
-      const updatedColumnNames = state.data.userData.columnNames.filter((_, index) => index !== columnIndexToRemove);
-
-      return {
-        ...state,
-        ...updateHistory({
-          ...state.data.userData,
-          rows: rowsWithColumnRemoved,
-          columnNames: updatedColumnNames,
-        }),
-      };
+      case 'RENAME_COLUMN':
+        const { index, newName } = action.payload;
+        const newColumns = [...state.data.userData.columns];
+        newColumns[index] = { ...newColumns[index], name: newName };
+        return { ...state, ...updateHistory({ ...state.data.userData, columns: newColumns }) };
+      
+      case 'ADD_COLUMN':
+        const newColumnName = action.payload;
+        const newColor = state.data.userData.colorStack[0] || 'text-gray-500'; // Default color if stack is empty
+        const newColorStack = state.data.userData.colorStack.slice(1); // Remove the used color from the stack
+        
+        const rowsWithNewColumn = state.data.userData.rows.map(row => ({
+          ...row,
+          data: [...row.data, null],
+        }));
+      
+        return {
+          ...state,
+          ...updateHistory({
+            ...state.data.userData,
+            rows: rowsWithNewColumn,
+            columns: [...state.data.userData.columns, { name: newColumnName, color: newColor }],
+            colorStack: newColorStack,
+          }),
+        };
+      
+      case 'REMOVE_COLUMN':
+        const columnIndexToRemove = action.payload;
+        if (state.data.userData.columns.length <= 2) {
+          // Prevent removing columns if there are only two left
+          return state;
+        }
+        
+        const removedColumn = state.data.userData.columns[columnIndexToRemove];
+        const rowsWithColumnRemoved = state.data.userData.rows.map(row => ({
+          ...row,
+          data: row.data.filter((_, index) => index !== columnIndexToRemove),
+          assignment: row.assignment === null ? null : 
+                      (row.assignment >= columnIndexToRemove ? row.assignment - 1 : row.assignment),
+        }));
+        const updatedColumns = state.data.userData.columns.filter((_, index) => index !== columnIndexToRemove);
+        const updatedColorStack = [...state.data.userData.colorStack, removedColumn.color];
+      
+        return {
+          ...state,
+          ...updateHistory({
+            ...state.data.userData,
+            rows: rowsWithColumnRemoved,
+            columns: updatedColumns,
+            colorStack: updatedColorStack,
+          }),
+        };
 
     case 'SET_SIMULATION_SPEED':
       if (validateSimulationSpeed(action.payload)) {

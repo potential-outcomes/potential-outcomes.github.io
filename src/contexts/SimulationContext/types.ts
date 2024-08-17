@@ -8,10 +8,17 @@ export type { DataRow } from '@/types/types';
 
 export { SimulationResult } from './SimulationResult';
 export { ExperimentalTestStatistic } from './testStatistics';
+
+
+export interface Column {
+  name: string;
+  color: string;
+}
   
   export interface UserDataState {
     rows: DataRow[];
-    columnNames: string[];
+    columns: Column[];
+    colorStack: string[];
   }
   
   export type PValueType = 'two-tailed' | 'left-tailed' | 'right-tailed';
@@ -21,13 +28,12 @@ export { ExperimentalTestStatistic } from './testStatistics';
     error?: string;
   }
   
-
-  
   // Context interfaces
   export interface SimulationDataContext {
     userData: UserDataState;
     setUserData: (data: UserDataState) => ActionResult;
-    clearUserData: () => ActionResult;
+    resetUserData: () => ActionResult;
+    emptyUserData: () => ActionResult;
     addRow: () => ActionResult;
     deleteRow: (index: number) => ActionResult;
     updateCell: (rowIndex: number, columnIndex: number, value: number | null) => ActionResult;
@@ -79,7 +85,8 @@ export { ExperimentalTestStatistic } from './testStatistics';
   // Action types (for use in reducer)
   export type SimulationAction =
     | { type: 'SET_USER_DATA'; payload: UserDataState }
-    | { type: 'CLEAR_USER_DATA' }
+    | { type: 'RESET_USER_DATA' }
+    | { type: 'EMPTY_USER_DATA'}
     | { type: 'ADD_ROW' }
     | { type: 'DELETE_ROW'; payload: number }
     | { type: 'UPDATE_CELL'; payload: { rowIndex: number; columnIndex: number; value: number | null } }
