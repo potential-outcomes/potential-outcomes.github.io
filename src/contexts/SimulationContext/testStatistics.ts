@@ -21,6 +21,21 @@ export interface TestStatisticFunction {
   (data: DataRow[]): number;
 }
 
+const safeMedian = (arr: number[]): number => {
+  if (arr.length === 0) return 0;
+  return median(arr);
+};
+
+const safeVariance = (arr: number[]): number => {
+  if (arr.length <= 1) return 0;
+  return Number(variance(arr));
+};
+
+const safeMean = (arr: number[]): number => {
+  if (arr.length === 0) return 0;
+  return Number(mean(arr));
+};
+
 const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
@@ -34,9 +49,7 @@ const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMeans = Object.values(groups).map(group =>
-    group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : 0
-  );
+  const groupMeans = Object.values(groups).map(group => safeMean(group));
 
   return groupMeans.length >= 2 ? groupMeans[1] - groupMeans[0] : 0;
 };
@@ -44,7 +57,6 @@ const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
 const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
-  // Separate data into two groups
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
     const value = row.data[0];
@@ -60,10 +72,13 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
     throw new Error("Wilcoxon Rank-Sum test requires exactly two groups");
   }
 
-  // Combine and sort all values
+  // Check if either group is empty
+  if (groups[0].length === 0 || groups[1].length === 0) {
+    return 0;
+  }
+
   const allValues = [...groups[0], ...groups[1]].sort((a, b) => a - b);
 
-  // Assign ranks
   const ranks = new Map<number, number>();
   allValues.forEach((value, index) => {
     if (!ranks.has(value)) {
@@ -71,7 +86,6 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
     }
   });
 
-  // Handle tied ranks
   const tiedRanks = new Map<number, number[]>();
   ranks.forEach((rank, value) => {
     if (!tiedRanks.has(rank)) {
@@ -87,7 +101,6 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
     }
   });
 
-  // Calculate rank sum for the first group
   const rankSum = groups[0].reduce((sum, value) => sum + ranks.get(value)!, 0);
 
   return rankSum;
@@ -106,9 +119,7 @@ const differenceInMedians: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMedians = Object.values(groups).map(group =>
-    group.length > 0 ? median(group) : 0
-  );
+  const groupMedians = Object.values(groups).map(group => safeMedian(group));
 
   return groupMedians.length >= 2 ? groupMedians[1] - groupMedians[0] : 0;
 };
@@ -126,9 +137,7 @@ const ratioOfVariances: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupVariances = Object.values(groups).map(group =>
-    group.length > 1 ? Number(variance(group)) : 0
-  );
+  const groupVariances = Object.values(groups).map(group => safeVariance(group));
 
   if (groupVariances.length < 2 || groupVariances[0] === 0) {
     return 1;
@@ -151,33 +160,34 @@ const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMeans = Object.values(groups).map(group => Number(mean(group)));
+  const groupMeans = Object.values(groups).map(group => safeMean(group));
   const groupSizes = Object.values(groups).map(group => group.length);
   
-  // Calculate overall mean safely
   const allValidValues = data.flatMap(row => 
     row.assignment !== null && typeof row.data[row.assignment] === 'number' 
       ? [row.data[row.assignment] as number] 
       : []
   );
-  const overallMean = Number(mean(allValidValues));
+
+  if (allValidValues.length === 0) return 0;
+
+  const overallMean = safeMean(allValidValues);
 
   const k = groupMeans.length; // number of groups
   const n = allValidValues.length; // total number of valid observations
 
-  // Calculate SSR (Sum of Squares Regression)
+  if (k <= 1 || n <= k) return 0; // Not enough groups or observations
+
   const SSR = groupMeans.reduce((sum, groupMean, i) => 
     sum + groupSizes[i] * Math.pow(groupMean - overallMean, 2), 0
   );
 
-  // Calculate SSE (Sum of Squares Error)
   const SSE = Object.values(groups).reduce((sum, group, i) => 
     sum + group.reduce((groupSum, value) => 
       groupSum + Math.pow(value - groupMeans[i], 2), 0
     ), 0
   );
 
-  // Calculate F-statistic
   const F = (SSR / (k - 1)) / (SSE / (n - k));
 
   return F;
