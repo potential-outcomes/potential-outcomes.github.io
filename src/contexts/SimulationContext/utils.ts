@@ -1,13 +1,14 @@
 // contexts/SimulationContext/utils.ts
 
 import { DataRow } from './types';
-import { ExperimentalTestStatistic, TestStatisticFunction, TestStatisticMeta } from './testStatistics';
+import { ExperimentalTestStatistic, testStatistics } from './testStatistics';
 import { sum } from 'mathjs';
 
 // Utility function to create a new row
 export const emptyRow = (columnCount: number): DataRow => ({
   data: Array(columnCount).fill(null),
-  assignment: null
+  assignment: null,
+  block: null,
 });
 
 // Utility function to calculate ranks for Wilcoxon Rank-Sum test
@@ -48,6 +49,31 @@ export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
   });
 };
 
+export const shuffleWithinBlocks = (rows: DataRow[]): DataRow[] => {
+  // Group rows by block
+  const blockGroups: { [key: string]: DataRow[] } = {};
+  rows.forEach(row => {
+    const blockKey = row.block || 'andefault';
+    if (!blockGroups[blockKey]) {
+      blockGroups[blockKey] = [];
+    }
+    blockGroups[blockKey].push(row);
+  });
+
+  // Shuffle assignments within each block
+  Object.keys(blockGroups).forEach(blockKey => {
+    const group = blockGroups[blockKey];
+    const assignments = group.map(row => row.assignment);
+    const shuffledAssignments = shuffleArray(assignments);
+    
+    group.forEach((row, index) => {
+      row.assignment = shuffledAssignments[index];
+    });
+  });
+
+  // Flatten the groups back into a single array
+  return Object.values(blockGroups).flat();
+};
 
 // Utility function to shuffle an array (used in simulation)
 export const shuffleArray = <T>(array: T[]): T[] => {
@@ -62,72 +88,6 @@ export const shuffleArray = <T>(array: T[]): T[] => {
 // Utility function to filter valid rows
 export const filterValidRows = (rows: DataRow[]): DataRow[] => {
   return rows.slice(0, -1).filter(row => row.data.every(value => value !== null));
-};
-
-// Test statistic functions
-export const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
-  if (!data || data.length === 0) return 0;
-
-  const groups = data.reduce((acc, row) => {
-    if (row.assignment === null) return acc;
-    const value = row.data[row.assignment];
-    if (typeof value === 'number') {
-      if (!acc[row.assignment]) acc[row.assignment] = [];
-      acc[row.assignment].push(value);
-    }
-    return acc;
-  }, {} as Record<number, number[]>);
-
-  const groupMeans = Object.values(groups).map(group =>
-    group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : 0
-  );
-
-  return groupMeans.length >= 2 ? groupMeans[1] - groupMeans[0] : 0;
-};
-
-export const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
-  if (!data || data.length === 0) return 0;
-
-  const groups = data.reduce((acc, row) => {
-    if (row.assignment === null) return acc;
-    const value = row.data[0];
-    if (typeof value === 'number') {
-      if (!acc[row.assignment]) acc[row.assignment] = [];
-      acc[row.assignment].push(value);
-    }
-    return acc;
-  }, {} as Record<number, number[]>);
-
-  const groupValues = Object.values(groups);
-  if (groupValues.length !== 2) {
-    throw new Error('Wilcoxon rank-sum test requires exactly two groups.');
-  }
-
-  const [group1, group2] = groupValues;
-  const combined = [...group1, ...group2];
-  const ranks = rank(combined);
-
-  const rankSumGroup1 = sum(ranks.slice(0, group1.length));
-  const n1 = group1.length;
-  const n2 = group2.length;
-
-  const U1 = rankSumGroup1 - (n1 * (n1 + 1)) / 2;
-  const U2 = (n1 * n2) - U1;
-
-  return Math.min(U1, U2);
-};
-
-export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta> = {
-  [ExperimentalTestStatistic.DifferenceInMeans]: {
-    name: "Difference in Means",
-    function: differenceInMeans,
-    supportsMultipleTreatments: false
-  },
-  [ExperimentalTestStatistic.WilcoxonRankSum]: {
-    name: "Wilcoxon Rank-Sum",
-    function: wilcoxonRankSum,
-    supportsMultipleTreatments: false
-  }
 };
 
 export const calculatePValue = (

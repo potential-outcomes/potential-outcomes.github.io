@@ -80,10 +80,10 @@ const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignmen
       }}
     />
     <div 
-      className={`absolute text-white opacity-25 cursor-pointer z-50 pointer-events-auto`}
+      className={`absolute text-white opacity-25 cursor-pointer z-50 pointer-events-auto -mx-2`}
       onClick={() => setAssignment?.(assignment == null ? assignment : isLeft ? Math.max(0, assignment - 1) : Math.min(numChildren - 1, assignment + 1))}
     >
-      <Icons.SixDots size={4} />
+      {isLeft? <Icons.DottedLeft size={5} /> : <Icons.DottedRight size={5} />}
     </div>
   </div>
 );

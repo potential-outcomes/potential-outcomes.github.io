@@ -4,7 +4,8 @@ import React, { createContext, useReducer, useCallback, useRef, useEffect, useSt
 import { simulationReducer } from './reducer';
 import * as actions from './actions';
 import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, ExperimentalTestStatistic } from './types';
-import { createActionResult, calculatePValue, testStatistics, shuffleArray, filterValidRows } from './utils';
+import { createActionResult, calculatePValue, shuffleWithinBlocks, filterValidRows } from './utils';
+import { testStatistics } from './testStatistics';
 
 export const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
@@ -13,8 +14,8 @@ const initialState: SimulationState = {
   data: {
     userData: {
       rows: [{ data: [null, null], assignment: null , block: null}],
-      columns: [{name: "Control", color: "text-green-500" }, {name: "Treatment", color: "text-blue-500"}],
-      colorStack: ['text-yellow-500', 'text-purple-500']
+      columns: [{name: "Control", color: 'text-purple-500' }, {name: "Treatment", color: "text-blue-500"}],
+      colorStack: ['text-yellow-500', 'text-green-500']
     },
     setUserData: () => ({ success: false, error: 'Not implemented' }),
     resetUserData: () => ({ success: false, error: 'Not implemented' }),
@@ -23,6 +24,7 @@ const initialState: SimulationState = {
     deleteRow: () => ({ success: false, error: 'Not implemented' }),
     updateCell: () => ({ success: false, error: 'Not implemented' }),
     setAssignment: () => ({ success: false, error: 'Not implemented' }),
+    setBlock: () => ({ success: false, error: 'Not implemented' }),
     renameColumn: () => ({ success: false, error: 'Not implemented' }),
     addColumn: () => ({ success: false, error: 'Not implemented' }),
     removeColumn: () => ({ success: false, error: 'Not implemented' }),
@@ -111,6 +113,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const updateCell = dispatchWithResult(actions.updateCell);
   const setAssignment = dispatchWithResult(actions.setAssignment);
+  const setBlock = dispatchWithResult(actions.setBlock);
   const renameColumn = dispatchWithResult(actions.renameColumn);
   const addColumn = dispatchWithResult(actions.addColumn);
   const removeColumn = dispatchWithResult(actions.removeColumn);
@@ -123,9 +126,12 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
 
   const simulate = useCallback((data: DataRow[]): SimulationResult => {
     const validData = filterValidRows(data);
-    const shuffledAssignments = shuffleArray(validData.map(row => row.assignment));
-    const permutedData = validData.map((row, index) => ({ ...row, assignment: shuffledAssignments[index] }));
-    return new SimulationResult(permutedData);
+    const shuffledData = shuffleWithinBlocks(validData);
+    console.log('shuffledData', shuffledData);
+    return new SimulationResult(shuffledData);
+    // const shuffledAssignments = shuffleArray(validData.map(row => row.assignment));
+    // const permutedData = validData.map((row, index) => ({ ...row, assignment: shuffledAssignments[index] }));
+    // return new SimulationResult(permutedData);
   }, []);
 
   const dynamicDelay = useCallback((baseDelay: number): Promise<void> => {
@@ -141,6 +147,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     onProgress: (simulationResults: SimulationResult[], pValue: number) => void
   ): Promise<SimulationResult[]> => {
     let simulationResults = [...existingResults];
+    console.log('EXISTING simulationResults', simulationResults);
   
     for (let i = simulationResults.length; i < iterations; i++) {
       if (abortSignal.aborted) {
@@ -248,6 +255,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       deleteRow,
       updateCell,
       setAssignment,
+      setBlock,
       renameColumn,
       addColumn,
       removeColumn

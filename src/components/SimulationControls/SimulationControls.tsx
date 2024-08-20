@@ -12,8 +12,7 @@ import { Icons } from '../common/Icons';
 
 export const SimulationControls: React.FC = () => {
   const {
-    userData,
-    setUserData
+    userData
   } = useSimulationData();
 
     const {
@@ -76,24 +75,20 @@ export const SimulationControls: React.FC = () => {
 
     const { icon, text } = getSimulationButtonProps(isSimulating, simulationResults, totalSimulations);
 
+    // Filter test statistics based on number of columns
+    const availableTestStatistics = Object.entries(testStatistics).filter(([_, { supportsMultipleTreatments }]) => {
+        return userData.columns.length <= 2 || supportsMultipleTreatments;
+    });
+
+    // Update selected test statistic if it's no longer valid
+    useEffect(() => {
+        if (!availableTestStatistics.some(([key]) => key === selectedTestStatistic)) {
+        setSelectedTestStatistic(availableTestStatistics[0][0] as ExperimentalTestStatistic);
+        }
+    }, [userData.columns.length, selectedTestStatistic, setSelectedTestStatistic]);
+
     return (
         <div className="flex flex-col space-y-4">
-            {/* <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              ref={fileInputRef}
-              className="hidden"
-            />
-
-            <ActionButton
-              onClick={() => fileInputRef.current?.click()}
-              icon={<Icons.Upload />}
-              label="Load from .csv"
-              primary
-            />
-
-            <TreatmentEffectInput /> */}
 
             <div className="space-y-2">
                 <label htmlFor="testStatistic" className="font-semibold block">Test Statistic:</label>
@@ -103,7 +98,7 @@ export const SimulationControls: React.FC = () => {
                     onChange={(e) => setSelectedTestStatistic(e.target.value as ExperimentalTestStatistic)}
                     className="w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
                 >
-                    {Object.entries(testStatistics).map(([key, { name }]) => (
+                    {availableTestStatistics.map(([key, { name }]) => (
                         <option key={key} value={key}>{name}</option>
                     ))}
                 </select>

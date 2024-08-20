@@ -34,6 +34,11 @@ export const setAssignment = (rowIndex: number, assignment: number | null): Simu
   payload: { rowIndex, assignment },
 });
 
+export const setBlock = (rowIndex: number, block: string | null): SimulationAction => ({
+  type: 'SET_BLOCK',
+  payload: { rowIndex, block },
+});
+
 export const renameColumn = (index: number, newName: string): SimulationAction => ({
   type: 'RENAME_COLUMN',
   payload: { index, newName },

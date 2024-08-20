@@ -165,19 +165,9 @@ export const Clear: React.FC<IconProps> = (props) => (
 
 export const RewindPlay: React.FC<IconProps> = (props) => (
   <SvgIcon viewBox="0 0 24 24" {...props}>
-    {/* Play triangle */}
-    <polygon points="8 7 16 12 8 17 8 7" />
-    
-    {/* Circular arrow */}
-    <path 
-      d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10c4.04 0 7.54-2.4 9.13-5.85" 
-      fill="none" 
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    
-    {/* Arrow head */}
-    <polygon points="22 12 19 8.5 19 15.5" />
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M10 8.5a1 1 0 0 1 1.53-.85l5 3a1 1 0 0 1 0 1.7l-5 3A1 1 0 0 1 10 14.5v-6z" fill="currentColor" stroke="none"/>
   </SvgIcon>
 );
 
@@ -191,6 +181,45 @@ export const SixDots: React.FC<IconProps> = (props) => (
     <circle cx="12" cy="18" r="2" />
   </SvgIcon>
 );
+
+export const DottedRight: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 32" {...props}>
+    <circle cx="16" cy="16" r="2" />
+    <circle cx="13" cy="10" r="2" />
+    <circle cx="10" cy="4" r="2" />
+    <circle cx="13" cy="22" r="2" />
+    <circle cx="10" cy="28" r="2" />
+  </SvgIcon>
+);
+
+export const DottedLeft: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 32" {...props}>
+    <circle cx="8" cy="16" r="2" />
+    <circle cx="11" cy="10" r="2" />
+    <circle cx="14" cy="4" r="2" />
+    <circle cx="11" cy="22" r="2" />
+    <circle cx="14" cy="28" r="2" />
+  </SvgIcon>
+);
+
+export const Reset: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M1 4v6h6" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+  </SvgIcon>
+);
+
+export const Blocking: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="12" y1="3" x2="12" y2="21" />
+    <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" />
+    <circle cx="16.5" cy="7.5" r="1.5" fill="currentColor" />
+    <circle cx="7.5" cy="16.5" r="1.5" fill="currentColor" />
+    <circle cx="16.5" cy="16.5" r="1.5" fill="currentColor" />
+  </SvgIcon>
+)
 
 export const Icons = {
   Undo,
@@ -211,7 +240,11 @@ export const Icons = {
   Continue,
   Clear,
   RewindPlay,
-  SixDots, // Add the new icon here
+  SixDots,
+  DottedLeft,
+  DottedRight,
+  Reset,
+  Blocking
 };
 
 export default Icons;

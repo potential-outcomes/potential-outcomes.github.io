@@ -2,6 +2,7 @@
 
 import { SimulationState, SimulationAction, UserDataState } from './types';
 import { emptyRow, filterValidRows, validateSimulationSpeed, validateSelectedTestStatistic, validateTotalSimulations, validatePValueType } from './utils';
+import { ExperimentalTestStatistic, testStatistics } from './testStatistics';
 
 export const simulationReducer = (state: SimulationState, action: SimulationAction): SimulationState => {
   const updateHistory = (newUserData: UserDataState): Partial<SimulationState> => ({
@@ -40,13 +41,13 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
             })
           };
 
-    case 'ADD_ROW':
-      const newRow = emptyRow(state.data.userData.columns.length);
-
-      const newRows = [...state.data.userData.rows];
-      newRows[newRows.length - 1].assignment = 1;
-      newRows.push(newRow);
-      return { ...state, ...updateHistory({ ...state.data.userData, rows: newRows }) };
+          case 'ADD_ROW':
+            const newRow = emptyRow(state.data.userData.columns.length);
+      
+            const newRows = [...state.data.userData.rows];
+            newRows[newRows.length - 1].assignment = 1;
+            newRows.push(newRow);
+            return { ...state, ...updateHistory({ ...state.data.userData, rows: newRows }) };
 
     case 'DELETE_ROW':
       const updatedRows = state.data.userData.rows.filter((_, index) => index !== action.payload);
@@ -81,6 +82,17 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         };
         return { ...state, ...updateHistory(updatedUserData) };
       }
+
+      case 'SET_BLOCK': {
+        const { rowIndex, block } = action.payload;
+        const updatedRows = state.data.userData.rows.map((row, index) => 
+          index === rowIndex ? { ...row, block } : row
+        );
+        return { 
+          ...state, 
+          ...updateHistory({ ...state.data.userData, rows: updatedRows })
+        };
+      }
       
       case 'SET_ASSIGNMENT': {
         const { rowIndex, assignment } = action.payload;
@@ -109,25 +121,51 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
         newColumns[index] = { ...newColumns[index], name: newName };
         return { ...state, ...updateHistory({ ...state.data.userData, columns: newColumns }) };
       
-      case 'ADD_COLUMN':
-        const newColumnName = action.payload;
-        const newColor = state.data.userData.colorStack[0] || 'text-gray-500'; // Default color if stack is empty
-        const newColorStack = state.data.userData.colorStack.slice(1); // Remove the used color from the stack
+        case 'ADD_COLUMN': {
+          const newColumnName = action.payload;
+          const newColor = state.data.userData.colorStack[0] || 'text-gray-500'; // Default color if stack is empty
+          const newColorStack = state.data.userData.colorStack.slice(1); // Remove the used color from the stack
+          
+          const rowsWithNewColumn = state.data.userData.rows.map(row => ({
+            ...row,
+            data: [...row.data, null],
+          }));
         
-        const rowsWithNewColumn = state.data.userData.rows.map(row => ({
-          ...row,
-          data: [...row.data, null],
-        }));
-      
-        return {
-          ...state,
-          ...updateHistory({
-            ...state.data.userData,
-            rows: rowsWithNewColumn,
-            columns: [...state.data.userData.columns, { name: newColumnName, color: newColor }],
-            colorStack: newColorStack,
-          }),
-        };
+          const newColumns = [...state.data.userData.columns, { name: newColumnName, color: newColor }];
+        
+          let newState = {
+            ...state,
+            ...updateHistory({
+              ...state.data.userData,
+              rows: rowsWithNewColumn,
+              columns: newColumns,
+              colorStack: newColorStack,
+            }),
+          };
+        
+          // Check if we're transitioning from 2 to 3 columns
+          if (state.data.userData.columns.length === 2 && newColumns.length === 3) {
+            const currentTestStatistic = state.settings.selectedTestStatistic;
+            if (!testStatistics[currentTestStatistic].supportsMultipleTreatments) {
+              // Find the first test statistic that supports multiple treatments
+              const newTestStatistic = Object.keys(testStatistics).find(
+                key => testStatistics[key as ExperimentalTestStatistic].supportsMultipleTreatments
+              ) as ExperimentalTestStatistic;
+        
+              if (newTestStatistic) {
+                newState = {
+                  ...newState,
+                  settings: {
+                    ...newState.settings,
+                    selectedTestStatistic: newTestStatistic
+                  }
+                };
+              }
+            }
+          }
+        
+          return newState;
+        }
       
       case 'REMOVE_COLUMN':
         const columnIndexToRemove = action.payload;

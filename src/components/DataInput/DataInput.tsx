@@ -14,7 +14,9 @@ import { Icons } from '../common/Icons';
 import { ColumnHeader } from './ColumnHeader';
 import { motion } from 'framer-motion';
 import { Overlay } from './Overlay';
+import DataControls from './DataControls'
 import InputCell from './InputCell';
+import { column } from 'mathjs';
 
 export const COLUMN_PROPORTIONS = {
   index: 1,
@@ -50,12 +52,14 @@ interface TableRowProps {
   index: number;
   updateCell: (rowIndex: number, columnIndex: number, value: number | null) => void;
   setAssignment: (rowIndex: number, assignment: number | null) => void;
+  setBlock: (rowIndex: number, block: string | null) => void;
   addRow: () => void;
   deleteRow: (rowIndex: number) => void;
   isUnactivated: boolean;
   toggleCollapse?: () => void;
   isCollapsed?: boolean;
   columns: Column[];
+  showBlocks: boolean;
 }
 
 const TableRow: React.FC<TableRowProps> = ({ 
@@ -63,12 +67,14 @@ const TableRow: React.FC<TableRowProps> = ({
   index, 
   updateCell, 
   setAssignment, 
+  setBlock,
   addRow,
   deleteRow,
   isUnactivated,
   toggleCollapse,
   isCollapsed,
   columns,
+  showBlocks,
 }) => {
   return (
     <div className={`flex items-stretch w-full h-14 py-2 bg-light-background dark:bg-dark-background ${isUnactivated ? 'sticky bottom-0' : ''}`}>
@@ -105,6 +111,18 @@ const TableRow: React.FC<TableRowProps> = ({
         />
       </div>
 
+      {showBlocks && (
+        <div className="flex-shrink-0 w-24 px-2">
+          <input
+            type="text"
+            value={row.block || ''}
+            onChange={(e) => setBlock(index, e.target.value || null)}
+            className="w-full h-full px-2 bg-transparent border border-light-background-tertiary dark:border-dark-background-tertiary rounded"
+            placeholder="Block"
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-center w-14 flex-shrink-0">
         {isUnactivated ? (
           <button 
@@ -140,12 +158,14 @@ export default function DataInput() {
     deleteRow,
     updateCell,
     setAssignment,
+    setBlock,
     renameColumn,
     addColumn, 
     removeColumn
   } = useSimulationData();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showBlocks, setShowBlocks] = useState(false);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columns.map(() => false));
   const [pulsate, setPulsate] = useState(false);
 
@@ -154,7 +174,8 @@ export default function DataInput() {
   const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
-      const dummyRow = emptyRow(lastSimulationResult[0].data.length);
+      console.log(lastSimulationResult);
+      const dummyRow = emptyRow(userData.columns.length);
       return [...lastSimulationResult, dummyRow];
     } else {
       return userData.rows;
@@ -211,6 +232,10 @@ export default function DataInput() {
   //   });
   // };
 
+  const toggleBlockingColumn = () => {
+    setShowBlocks(!showBlocks);
+  };
+
   const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, userData.columns]);
 
   const renderRows = useMemo(() => {
@@ -223,12 +248,14 @@ export default function DataInput() {
         index={index}
         updateCell={updateCell}
         setAssignment={setAssignment}
+        setBlock={setBlock}
         addRow={addRow}
         deleteRow={deleteRow}
         isUnactivated={index === dataToDisplay.length - 1}
         toggleCollapse={index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined}
         isCollapsed={isCollapsed}
         columns={userData.columns}
+        showBlocks={showBlocks}
       />
     ));
 
@@ -246,9 +273,11 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, isSimulating]);
+  }, [dataToDisplay, isCollapsed, isSimulating, showBlocks, userData.columns]);
 
   return (
+    <>
+     <DataControls toggleBlocking={toggleBlockingColumn} isBlockingEnabled={showBlocks}/>
     <div className="w-full max-w-4xl mx-auto text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
       <motion.div 
          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
@@ -269,8 +298,8 @@ export default function DataInput() {
         <div className="flex-shrink-0 flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
           <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
           <div className="flex-grow flex">
-            {userData.columns.map((column, index) => (
-              <div key={index} className="flex-1">
+            {userData.columns.map((column, index) => {
+              return (<div key={index} className="flex-1">
                 <ColumnHeader
                   isEditing={editingColumnNames[index]}
                   value={column.name}
@@ -291,7 +320,7 @@ export default function DataInput() {
                   removable={userData.columns.length > 2}
                 />
               </div>
-            ))}
+            )})}
           </div>
           {userData.colorStack.length > 0 && (
             <button 
@@ -302,6 +331,9 @@ export default function DataInput() {
               <Icons.Add size={4}/>
             </button>
           )}
+          {showBlocks && (
+              <div className="w-24 flex-shrink-0 flex items-center justify-center font-medium">Block</div>
+            )}
           <div className="w-8 flex-shrink-0 flex justify-end items-center space-x-1 pr-1"/>
         </div>
         <div 
@@ -315,5 +347,6 @@ export default function DataInput() {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }

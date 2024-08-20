@@ -1,54 +1,39 @@
 import React, { useRef } from 'react';
 import { Tooltip } from '../common/Tooltip';
 import { Icons } from '../common/Icons';
-import { 
-  useSimulationState,
+import {
   useSimulationData,
   useSimulationHistory
 } from '@/contexts/SimulationContext';
 import ApplyEffectButton from './ApplyEffectButton';
 
-const DataControls: React.FC = () => {
-  const { userData, isSimulating } = useSimulationState();
-  const { setUserData, resetUserData, emptyUserData } = useSimulationData();
+interface DataControlsProps {
+  toggleBlocking: () => void;
+  isBlockingEnabled: boolean;
+}
+
+const DataControls: React.FC<DataControlsProps> = ({ toggleBlocking, isBlockingEnabled }) => {
+  const { resetUserData, emptyUserData } = useSimulationData();
   const { undo, redo } = useSimulationHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (isSimulating) return;
-  //   const file = event.target.files?.[0];
-  //   if (file) {
-  //     const reader = new FileReader();
-  //     reader.onload = (e) => {
-  //       const text = e.target?.result;
-  //       if (typeof text === 'string') {
-  //         const lines = text.split('\n').filter(line => line.trim() !== '');
-          
-  //         const rows = lines.map(line => {
-  //           const values = line.split(',').map(value => value.trim());
-  //           const assignment = parseInt(values.pop() || '0', 10);
-  //           const data = values.map(value => value === '' ? null : Number(value));
-            
-  //           return { data, assignment, null };
-  //         });
-
-  //         const dataColumnCount = Math.max(...rows.map(row => row.data.length));
-          
-  //         setUserData({
-  //           rows: [...rows, { data: Array(dataColumnCount).fill(null), assignment: 0, block: null }],
-  //           columns: userData.columns
-  //         });
-  //       }
-  //     };
-  //     reader.readAsText(file);
-  //   }
-  // };
-
   return (
     <div className="flex justify-between items-center w-full">
-      {/* <div className="flex items-center"> */}
+      <div className="flex items-center space-x-2">
         <ApplyEffectButton />
-      {/* </div> */}
+        <Tooltip content={isBlockingEnabled ? "Disable blocking" : "Enable blocking"}>
+          <button
+            onClick={toggleBlocking}
+            className={`p-1 focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200 ${
+              isBlockingEnabled
+                ? 'text-light-primary dark:text-dark-primary'
+                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary'
+            }`}
+          >
+            <Icons.Blocking size={4} />
+          </button>
+        </Tooltip>
+      </div>
       <div className="flex justify-end items-center space-x-1">
         <input
           type="file"
@@ -97,7 +82,7 @@ const DataControls: React.FC = () => {
             onClick={resetUserData}
             className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-primary dark:hover:text-dark-primary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200"
           >
-            <Icons.RewindPlay size={4} />
+            <Icons.Reset size={4} />
           </button>
         </Tooltip>
       </div>

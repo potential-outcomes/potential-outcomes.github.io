@@ -38,6 +38,7 @@ export interface Column {
     deleteRow: (index: number) => ActionResult;
     updateCell: (rowIndex: number, columnIndex: number, value: number | null) => ActionResult;
     setAssignment: (rowIndex: number, assignment: number | null) => ActionResult;
+    setBlock: (rowIndex: number, block: string | null) => ActionResult;  // New method
     renameColumn: (index: number, newName: string) => ActionResult;
     addColumn: (name: string) => ActionResult;
     removeColumn: (index: number) => ActionResult;
@@ -91,6 +92,7 @@ export interface Column {
     | { type: 'DELETE_ROW'; payload: number }
     | { type: 'UPDATE_CELL'; payload: { rowIndex: number; columnIndex: number; value: number | null } }
     | { type: 'SET_ASSIGNMENT'; payload: { rowIndex: number; assignment: number | null } }
+    | { type: 'SET_BLOCK'; payload: { rowIndex: number; block: string | null } }
     | { type: 'SET_CONTROL_COLUMN'; payload: number }
     | { type: 'RENAME_COLUMN'; payload: { index: number; newName: string } }
     | { type: 'ADD_COLUMN'; payload: string }

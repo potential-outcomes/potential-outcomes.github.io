@@ -34,4 +34,4 @@ export {
   differenceInMeans,
   wilcoxonRankSum,
   testStatistics
-} from './utils';
+} from './testStatistics';
