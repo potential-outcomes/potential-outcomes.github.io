@@ -21,6 +21,7 @@
     "react-grid-layout": "^1.4.4",
     "react-plotly.js": "^2.6.0",
     "react-virtualized-auto-sizer": "^1.0.24",
+    "tailwind-merge": "^2.5.2",
     "tailwindcss-filters": "^3.0.0",
     "three": "^0.167.0"
   },

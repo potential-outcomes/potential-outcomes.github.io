@@ -1,8 +1,7 @@
 // contexts/SimulationContext/utils.ts
 
-import { DataRow } from './types';
+import { DataRow, ActionResult } from './types';
 import { ExperimentalTestStatistic, testStatistics } from './testStatistics';
-import { sum } from 'mathjs';
 
 // Utility function to create a new row
 export const emptyRow = (columnCount: number): DataRow => ({
@@ -10,24 +9,6 @@ export const emptyRow = (columnCount: number): DataRow => ({
   assignment: null,
   block: null,
 });
-
-// Utility function to calculate ranks for Wilcoxon Rank-Sum test
-export const rank = (values: number[]): number[] => {
-  const sorted = values
-    .map((value, index) => ({ value, index }))
-    .sort((a, b) => a.value - b.value);
-
-  const ranks = Array(values.length);
-  let currentRank = 1;
-  for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i].value !== sorted[i - 1].value) {
-      currentRank = i + 1;
-    }
-    ranks[sorted[i].index] = currentRank;
-  }
-
-  return ranks;
-};
 
 export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
   const groups = rows.reduce((acc, row, index) => {
@@ -127,11 +108,21 @@ export const validateTotalSimulations = (total: number): boolean => total >= 1 &
 export const validatePValueType = (type: 'two-tailed' | 'left-tailed' | 'right-tailed'): boolean => 
   ['two-tailed', 'left-tailed', 'right-tailed'].includes(type);
 
-export const createActionResult = <T>(action: () => T): { success: boolean; error?: string; value?: T } => {
+export const createActionResult = (
+  action: () => void,
+  options?: { 
+    warnIf?: () => boolean;
+    warnMessage?: string;
+  }
+): ActionResult => {
   try {
-    const result = action();
-    return { success: true, value: result };
+    action();
+    const warning = options?.warnIf?.() ? options.warnMessage : undefined;
+    return { success: true, warning };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'An unknown error occurred' };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'An unknown error occurred'
+    };
   }
 };

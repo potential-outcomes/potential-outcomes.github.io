@@ -18,7 +18,6 @@ export * from './types';
 
 export {
   emptyRow,
-  rank,
   shuffleArray,
   filterValidRows,
   calculatePValue,

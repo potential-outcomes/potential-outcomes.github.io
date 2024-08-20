@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from '../common/Icons';
 import { Tooltip } from '../common/Tooltip';
+import '@/styles/globals.css';
 
 interface ColumnHeaderProps {
   isEditing: boolean;
@@ -31,14 +32,14 @@ export function ColumnHeader({
           value={value}
           onChange={onChange}
           onBlur={onBlur}
-          className={`w-full bg-transparent text-center border-b-2 focus:outline-none ${color}`}
+          className={`w-full bg-transparent truncate text-center border-b-2 focus:outline-none ${color}`}
           autoFocus
         />
       ) : (
         <>
           <div className="flex items-center">
             <span 
-              className="truncate cursor-text"
+              className={`truncate cursor-text !${color}`}
               onClick={onClick}
             >
               {value}
@@ -47,7 +48,7 @@ export function ColumnHeader({
             <Tooltip content="Delete column" position="bottom" className='w-5 h-5'>
               <button 
                 onClick={removeColumn}
-                className={`ml-1 ${color} hover:text-light-error dark:hover:text-dark-error focus:outline-none`}
+                className={`ml-1 ${color} hover:!text-light-error dark:hover:!text-dark-error focus:outline-none`}
                 aria-label="Delete column"
               >
                 <Icons.Clear/>

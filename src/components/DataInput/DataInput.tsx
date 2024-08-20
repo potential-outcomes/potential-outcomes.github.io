@@ -111,6 +111,8 @@ const TableRow: React.FC<TableRowProps> = ({
         />
       </div>
 
+      {/* <div className="w-4 flex-shrink-0"/> */}
+
       {showBlocks && (
         <div className="flex-shrink-0 w-24 px-2">
           <input
@@ -207,31 +209,6 @@ export default function DataInput() {
     renameColumn(index, e.target.value.slice(0, 20));  // Limit to 20 characters
   };
 
-  // const handleAddColumn = () => {
-  //   if (colorStack.length === 0) {
-  //     console.error("No more colors available");
-  //     return;
-  //   }
-
-  //   const newColor = colorStack[colorStack.length - 1];
-  //   const newColumnName = "New Column";
-
-  //   addColumn(newColumnName);
-  //   setColorStack(prevStack => prevStack.slice(0, -1));
-  //   setColumnColors(prevColors => [...prevColors, newColor]); // Add the new color to columnColors
-  // };
-
-  // const handleRemoveColumn = (index: number) => {
-  //   const removedColor = columnColors[index];
-  //   removeColumn(index);
-  //   setColorStack(prevStack => [...prevStack, removedColor]);
-  //   setColumnColors(prevColors => {
-  //     const newColors = [...prevColors];
-  //     newColors.splice(index, 1); // Remove the color at the specified index
-  //     return newColors;
-  //   });
-  // };
-
   const toggleBlockingColumn = () => {
     setShowBlocks(!showBlocks);
   };
@@ -278,7 +255,7 @@ export default function DataInput() {
   return (
     <>
      <DataControls toggleBlocking={toggleBlockingColumn} isBlockingEnabled={showBlocks}/>
-    <div className="w-full max-w-4xl mx-auto text-light-text-primary dark:text-dark-text-primary flex flex-col h-full">
+    <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
       <motion.div 
          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
         animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
@@ -295,7 +272,7 @@ export default function DataInput() {
             transition={{ duration: 0.25 }}
           />
         )}
-        <div className="flex-shrink-0 flex items-stretch rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
+        <div className="flex items-stretch w-full rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
           <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
           <div className="flex-grow flex">
             {userData.columns.map((column, index) => {
@@ -322,19 +299,26 @@ export default function DataInput() {
               </div>
             )})}
           </div>
-          {userData.colorStack.length > 0 && (
-            <button 
-              onClick={() => addColumn("New Column")}
-              className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
-              aria-label="Add column"
-            >
-              <Icons.Add size={4}/>
-            </button>
-          )}
+          
           {showBlocks && (
-              <div className="w-24 flex-shrink-0 flex items-center justify-center font-medium">Block</div>
+              <div className="w-24 flex-shrink-0 flex items-center px-6 font-medium">Block</div>
             )}
-          <div className="w-8 flex-shrink-0 flex justify-end items-center space-x-1 pr-1"/>
+          <div className="flex items-center justify-center w-14 flex-shrink-0">
+            {userData.colorStack.length > 0 ? (
+              <button 
+                onClick={() => addColumn("New Column")}
+                className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
+                aria-label="Add column"
+              >
+                <Icons.Add size={4}/>
+              </button>
+            ) :
+            (
+              <div className="w-8 flex-shrink-0"/>
+            )
+            }
+          </div>
+          {/* <div className="w-8 flex-shrink-0 flex justify-end items-center space-x-1 pr-1"/> */}
         </div>
         <div 
           ref={scrollContainerRef}

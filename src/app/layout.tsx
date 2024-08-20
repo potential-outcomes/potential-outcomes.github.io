@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { ThemeProvider } from '../components/common/ThemeProvider';
 import TopBar from '../components/common/TopBar';
+import { HiddenColorClasses } from '../components/common/HiddenColorClasses';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} bg-light-background-secondary dark:bg-dark-background-secondary text-light-text dark:text-dark-text`}>
         <ThemeProvider>
+        <HiddenColorClasses />
           <TopBar links={links} />
           <main className="container mx-auto mt-0 px-6">
             {children}

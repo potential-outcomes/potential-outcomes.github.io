@@ -1,103 +1,48 @@
-// contexts/SimulationContext/SimulationProvider.tsx
-
 import React, { createContext, useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import { simulationReducer } from './reducer';
 import * as actions from './actions';
-import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, ExperimentalTestStatistic } from './types';
+import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, WarningCondition } from './types';
 import { createActionResult, calculatePValue, shuffleWithinBlocks, filterValidRows } from './utils';
 import { testStatistics } from './testStatistics';
+import { INITIAL_STATE } from './constants';
 
 export const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
-// Initial state
-const initialState: SimulationState = {
-  data: {
-    userData: {
-      rows: [{ data: [null, null], assignment: null , block: null}],
-      columns: [{name: "Control", color: 'text-purple-500' }, {name: "Treatment", color: "text-blue-500"}],
-      colorStack: ['text-yellow-500', 'text-green-500']
-    },
-    setUserData: () => ({ success: false, error: 'Not implemented' }),
-    resetUserData: () => ({ success: false, error: 'Not implemented' }),
-    emptyUserData: () => ({success: false, error: 'Not implemented'}),
-    addRow: () => ({ success: false, error: 'Not implemented' }),
-    deleteRow: () => ({ success: false, error: 'Not implemented' }),
-    updateCell: () => ({ success: false, error: 'Not implemented' }),
-    setAssignment: () => ({ success: false, error: 'Not implemented' }),
-    setBlock: () => ({ success: false, error: 'Not implemented' }),
-    renameColumn: () => ({ success: false, error: 'Not implemented' }),
-    addColumn: () => ({ success: false, error: 'Not implemented' }),
-    removeColumn: () => ({ success: false, error: 'Not implemented' }),
-  },
-  settings: {
-    simulationSpeed: 50,
-    selectedTestStatistic: ExperimentalTestStatistic.DifferenceInMeans,
-    totalSimulations: 1000,
-    pValueType: 'two-tailed' as PValueType,
-    setSimulationSpeed: () => ({ success: false, error: 'Not implemented' }),
-    setSelectedTestStatistic: () => ({ success: false, error: 'Not implemented' }),
-    setTotalSimulations: () => ({ success: false, error: 'Not implemented' }),
-    setPValueType: () => ({ success: false, error: 'Not implemented' }),
-  },
-  control: {
-    isSimulating: false,
-    startSimulation: async () => ({ success: false, error: 'Not implemented' }),
-    pauseSimulation: () => ({ success: false, error: 'Not implemented' }),
-    clearSimulationData: () => ({ success: false, error: 'Not implemented' }),
-  },
-  results: {
-    simulationResults: [],
-    pValue: null,
-    observedStatistic: null,
-  },
-  history: {
-    canUndo: false,
-    canRedo: false,
-    undo: () => ({ success: false, error: 'Not implemented' }),
-    redo: () => ({ success: false, error: 'Not implemented' }),
-  },
-  past: [],
-  future: [],
-};
-
-const initialColorStack = [
-  
-  // 'text-pink-500',
-  // 'text-indigo-500',
-  // 'text-red-500',
-  // 'text-orange-500',
-];
-
 export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  const [state, dispatch] = useReducer(simulationReducer, initialState);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [state, dispatch] = useReducer(simulationReducer, INITIAL_STATE);
+  // const abortControllerRef = useRef<AbortController | null>(null);
   const simulationSpeedRef = useRef<number>(state.settings.simulationSpeed);
 
-  // const [columnColors, setColumnColors] = useState<string[]>(() => {
-  //   const colors: string[] = [];
-  //   const tempColorStack = [...colorStack];
-
-  //   for (let i = 0; i < state.data.userData.columnNames.length; i++) {
-  //     if (tempColorStack.length > 0) {
-  //       colors.push(tempColorStack.pop()!);
-  //     } else {
-  //       // If we run out of colors, start reusing them from the beginning
-  //       colors.push(initialColorStack[i % initialColorStack.length]);
-  //     }
-  //   }
-
-  //   setColorStack(tempColorStack);
-  //   return colors;
-  // });
-
   const dispatchWithResult = useCallback(<T extends any[]>(
-    actionCreator: (...args: T) => ReturnType<typeof actions[keyof typeof actions]>
+    actionCreator: (...args: T) => ReturnType<typeof actions[keyof typeof actions]>,
+    warningConditions?: WarningCondition[]
   ) => (...args: T): ActionResult => {
-    return createActionResult(() => {
-      dispatch(actionCreator(...args));
-      return undefined;
-    });
-  }, []);
+    const action = actionCreator(...args);
+    
+    dispatch(action);
+    
+    // Access the updated state after dispatch
+    const updatedState = simulationReducer(state, action);
+  
+    if (updatedState.error) {
+      console.error('Error in action dispatch:', updatedState.error.message);
+      return { 
+        success: false, 
+        error: updatedState.error.message
+      };
+    }
+  
+    // Check for warnings after successful dispatch
+    const activeWarnings = warningConditions?.filter(condition => condition.check(updatedState)) || [];
+    const warningMessage = activeWarnings.length > 0
+      ? activeWarnings.map(warning => warning.message).join('; ')
+      : undefined;
+  
+    return { 
+      success: true, 
+      warning: warningMessage 
+    };
+  }, [state, dispatch]);
 
   const setSimulationSpeed = useCallback((speed: number): ActionResult => {
     return createActionResult(() => {
@@ -105,11 +50,19 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       dispatch(actions.setSimulationSpeed(speed));
     });
   }, []);
-
+  
   const setUserData = dispatchWithResult(actions.setUserData);
   const resetUserData = dispatchWithResult(actions.resetUserData);
   const emptyUserData = dispatchWithResult(actions.emptyUserData);
-  const addRow = dispatchWithResult(actions.addRow);
+  
+  const addRow = dispatchWithResult(
+    actions.addRow,
+    [
+      { check: () => state.data.userData.rows.length > 50, message: "Adding too many rows may impact performance" },
+      { check: () => state.data.userData.rows.length > 100, message: "Extremely large datasets may cause stability issues" }
+    ]
+  );
+  
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const updateCell = dispatchWithResult(actions.updateCell);
   const setAssignment = dispatchWithResult(actions.setAssignment);
@@ -123,15 +76,13 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   const clearSimulationData = dispatchWithResult(actions.clearSimulationData);
   const undo = dispatchWithResult(actions.undo);
   const redo = dispatchWithResult(actions.redo);
+  const startSimulation = dispatchWithResult(actions.startSimulation);
+  const pauseSimulation = dispatchWithResult(actions.pauseSimulation);
 
   const simulate = useCallback((data: DataRow[]): SimulationResult => {
     const validData = filterValidRows(data);
     const shuffledData = shuffleWithinBlocks(validData);
-    console.log('shuffledData', shuffledData);
     return new SimulationResult(shuffledData);
-    // const shuffledAssignments = shuffleArray(validData.map(row => row.assignment));
-    // const permutedData = validData.map((row, index) => ({ ...row, assignment: shuffledAssignments[index] }));
-    // return new SimulationResult(permutedData);
   }, []);
 
   const dynamicDelay = useCallback((baseDelay: number): Promise<void> => {
@@ -145,13 +96,12 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     existingResults: SimulationResult[],
     abortSignal: AbortSignal,
     onProgress: (simulationResults: SimulationResult[], pValue: number) => void
-  ): Promise<SimulationResult[]> => {
+  ): Promise<{ results: SimulationResult[], aborted: boolean }> => {
     let simulationResults = [...existingResults];
-    console.log('EXISTING simulationResults', simulationResults);
   
     for (let i = simulationResults.length; i < iterations; i++) {
       if (abortSignal.aborted) {
-        throw new Error('Simulation aborted');
+        return { results: simulationResults, aborted: true };
       }
   
       const result = simulate(data);
@@ -163,78 +113,70 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
         state.settings.selectedTestStatistic,
         state.settings.pValueType
       );
-
+  
       onProgress(simulationResults, currentPValue);
   
       await dynamicDelay(2000);
     }
   
-    return simulationResults;
+    return { results: simulationResults, aborted: false };
   }, [simulate, state.results.observedStatistic, state.settings.selectedTestStatistic, state.settings.pValueType, dynamicDelay]);
   
-  const startSimulation = useCallback(async (): Promise<ActionResult> => {
-    if (state.control.isSimulating) return { success: false, error: 'Simulation already in progress' };
+  const simulationRef = useRef<{
+    run: (signal: AbortSignal) => Promise<void>;
+    abort: () => void;
+  } | null>(null);
 
-    dispatch(actions.startSimulation());
+  useEffect(() => {
+    if (state.control.isSimulating && !simulationRef.current) {
+      const abortController = new AbortController();
 
-    if (state.results.simulationResults.length >= state.settings.totalSimulations) {
-      dispatch(actions.setSimulationResults([]));
-      // wait
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
+      simulationRef.current = {
+        run: async (signal) => {
+          try {
+            const { results, aborted } = await runSimulation(
+              state.data.userData.rows,
+              state.settings.totalSimulations,
+              state.results.simulationResults,
+              signal,
+              (simulationResults, pValue) => {
+                dispatch(actions.setSimulationResults(simulationResults));
+                dispatch(actions.setPValue(pValue));
+              }
+            );
 
-    const existingResults = state.results.simulationResults.slice();
+            if (!aborted) {
+              dispatch(actions.setSimulationResults(results));
+              const finalPValue = calculatePValue(
+                state.results.observedStatistic!,
+                results.map(r => r.rows),
+                state.settings.selectedTestStatistic,
+                state.settings.pValueType
+              );
+              dispatch(actions.setPValue(finalPValue));
+            }
+          } catch (error) {
+            console.error('Simulation error:', error);
+          } finally {
+            dispatch(actions.pauseSimulation());
+            simulationRef.current = null;
+          }
+        },
+        abort: () => abortController.abort()
+      };
 
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    try {
-      const results = await runSimulation(
-        state.data.userData.rows,
-        state.settings.totalSimulations,
-        existingResults,
-        abortController.signal,
-        (simulationResults, pValue) => {
-          dispatch(actions.setSimulationResults(simulationResults));
-          dispatch(actions.setPValue(pValue));
-        }
-      );
-
-      dispatch(actions.setSimulationResults(results));
-      const finalPValue = calculatePValue(
-        state.results.observedStatistic!,
-        results.map(r => r.rows),
-        state.settings.selectedTestStatistic,
-        state.settings.pValueType
-      );
-      dispatch(actions.setPValue(finalPValue));
-      return { success: true };
-    } catch (error) {
-      if (error instanceof Error) {
-        return { success: false, error: error.message !== 'Simulation aborted' ? error.message : 'Simulation was aborted' };
-      }
-      return { success: false, error: 'An unknown error occurred during simulation' };
-    } finally {
-      dispatch(actions.pauseSimulation());
-      abortControllerRef.current = null;
+      simulationRef.current.run(abortController.signal);
+    } else if (!state.control.isSimulating && simulationRef.current) {
+      simulationRef.current.abort();
+      simulationRef.current = null;
     }
   }, [state.control.isSimulating, state.data.userData.rows, state.settings.totalSimulations, state.results.simulationResults, state.results.observedStatistic, state.settings.selectedTestStatistic, state.settings.pValueType, runSimulation]);
-
-  const pauseSimulation = useCallback((): ActionResult => {
-    return createActionResult(() => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      dispatch(actions.pauseSimulation());
-    });
-  }, []);
 
   useEffect(() => {
     const newObservedStatistic = testStatistics[state.settings.selectedTestStatistic].function(state.data.userData.rows);
     dispatch(actions.setObservedStatistic(newObservedStatistic));
   
-    if (state.results.simulationResults) {
+    if (state.results.simulationResults.length > 0) {
       const newPValue = calculatePValue(
         newObservedStatistic,
         state.results.simulationResults.map(r => r.rows),
@@ -281,6 +223,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       undo,
       redo,
     },
+    error: state.error,
   };
 
   return (

@@ -5,90 +5,109 @@ import {
     useSimulationControl, 
     useSimulationState,
     testStatistics,
-    ExperimentalTestStatistic
+    ExperimentalTestStatistic,
+    ActionResult
 } from '@/contexts/SimulationContext';
 import { ActionButton } from './ActionButton';
 import { Icons } from '../common/Icons';
+import ActionResultFeedback from '@/components/common/ActionResultFeedback';
 
 export const SimulationControls: React.FC = () => {
   const {
     userData
   } = useSimulationData();
 
-    const {
-        totalSimulations,
-        simulationSpeed,
-        selectedTestStatistic,
-        pValueType,
-        isSimulating,
-        simulationResults
-    } = useSimulationState();
-      
-    const {
-        setTotalSimulations,
-        setSimulationSpeed,
-        setSelectedTestStatistic,
-        setPValueType
-    } = useSimulationSettings();
-      
-    const {
-        startSimulation,
-        pauseSimulation,
-        clearSimulationData
-    } = useSimulationControl();
+  const {
+    totalSimulations,
+    simulationSpeed,
+    selectedTestStatistic,
+    pValueType,
+    isSimulating,
+    simulationResults
+  } = useSimulationState();
+    
+  const {
+    setTotalSimulations,
+    setSimulationSpeed,
+    setSelectedTestStatistic,
+    setPValueType
+  } = useSimulationSettings();
+    
+  const {
+    startSimulation,
+    pauseSimulation,
+    clearSimulationData
+  } = useSimulationControl();
 
-    const [inputTotalSimulations, setInputTotalSimulations] = useState(totalSimulations.toString());
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inputTotalSimulations, setInputTotalSimulations] = useState(totalSimulations.toString());
+  const [simulationActionResult, setSimulationActionResult] = useState<ActionResult | null>(null);
+  const [clearActionResult, setClearActionResult] = useState<ActionResult | null>(null);
 
-    useEffect(() => {
+  useEffect(() => {
+    setInputTotalSimulations(totalSimulations.toString());
+  }, [totalSimulations]);
+
+  const isValidTotalSimulations = (value: string) => {
+    const num = parseInt(value);
+    return !isNaN(num) && num > 0;
+  };
+
+  const handleTotalSimulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputTotalSimulations(e.target.value);
+  };
+
+  const handleTotalSimulationsBlur = () => {
+    if (isValidTotalSimulations(inputTotalSimulations)) {
+      const result = setTotalSimulations(parseInt(inputTotalSimulations));
+      if (!result.success) {
         setInputTotalSimulations(totalSimulations.toString());
-    }, [totalSimulations]);
+      }
+    } else {
+      setInputTotalSimulations(totalSimulations.toString());
+    }
+  };
 
-    const isValidTotalSimulations = (value: string) => {
-        const num = parseInt(value);
-        return !isNaN(num) && num > 0;
-    };
+  const getSimulationButtonProps = (isSimulating: boolean, simulationResults: { length: number } | null, totalSimulations: number) => {
+    if (isSimulating) {
+      return { icon: <Icons.Pause size={5} />, text: 'Pause' };
+    } else if (!simulationResults || simulationResults.length === 0) {
+      return { icon: <Icons.Play size={5} />, text: 'Play' };
+    } else if (simulationResults.length < totalSimulations) {
+      return { icon: <Icons.Continue size={5} />, text: 'Continue' };
+    } else {
+      return { icon: <Icons.RewindPlay size={5} />, text: 'Restart' };
+    }
+  };
 
-    const handleTotalSimulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputTotalSimulations(e.target.value);
-    };
+  const { icon, text } = getSimulationButtonProps(isSimulating, simulationResults, totalSimulations);
 
-    const handleTotalSimulationsBlur = () => {
-        if (isValidTotalSimulations(inputTotalSimulations)) {
-            setTotalSimulations(parseInt(inputTotalSimulations));
-        } else {
-            setInputTotalSimulations(totalSimulations.toString());
-        }
-    };
+  // Filter test statistics based on number of columns
+  const availableTestStatistics = Object.entries(testStatistics).filter(([_, { supportsMultipleTreatments }]) => {
+    return userData.columns.length <= 2 || supportsMultipleTreatments;
+  });
 
-    const getSimulationButtonProps = (isSimulating: boolean, simulationResults: { length: number } | null, totalSimulations: number) => {
-        if (isSimulating) {
-            return { icon: <Icons.Pause size={5} />, text: 'Pause' };
-        } else if (!simulationResults || simulationResults.length === 0) {
-            return { icon: <Icons.Play size={5} />, text: 'Play' };
-        } else if (simulationResults.length < totalSimulations) {
-            return { icon: <Icons.Continue size={5} />, text: 'Continue' };
-        } else {
-            return { icon: <Icons.RewindPlay size={5} />, text: 'Restart' };
-        }
-    };
+  // Update selected test statistic if it's no longer valid
+  useEffect(() => {
+    if (!availableTestStatistics.some(([key]) => key === selectedTestStatistic)) {
+      setSelectedTestStatistic(availableTestStatistics[0][0] as ExperimentalTestStatistic);
+    }
+  }, [userData.columns.length, selectedTestStatistic, setSelectedTestStatistic]);
 
-    const { icon, text } = getSimulationButtonProps(isSimulating, simulationResults, totalSimulations);
+  const handleSimulationAction = async () => {
+    if (simulationResults && simulationResults.length == totalSimulations) {
+        clearSimulationData();
+    }
+    const result = isSimulating ? pauseSimulation() : startSimulation();
+    setSimulationActionResult(result);
+  };
 
-    // Filter test statistics based on number of columns
-    const availableTestStatistics = Object.entries(testStatistics).filter(([_, { supportsMultipleTreatments }]) => {
-        return userData.columns.length <= 2 || supportsMultipleTreatments;
-    });
+  const handleClearSimulation = () => {
+    const result = clearSimulationData();
+    setClearActionResult(result);
+  };
 
-    // Update selected test statistic if it's no longer valid
-    useEffect(() => {
-        if (!availableTestStatistics.some(([key]) => key === selectedTestStatistic)) {
-        setSelectedTestStatistic(availableTestStatistics[0][0] as ExperimentalTestStatistic);
-        }
-    }, [userData.columns.length, selectedTestStatistic, setSelectedTestStatistic]);
-
-    return (
-        <div className="flex flex-col space-y-4">
+  return (
+    <div className="flex flex-col space-y-4">
 
             <div className="space-y-2">
                 <label htmlFor="testStatistic" className="font-semibold block">Test Statistic:</label>
@@ -120,19 +139,22 @@ export const SimulationControls: React.FC = () => {
 
             <div className="flex flex-col space-y-2">
                 <button
-                    onClick={isSimulating ? pauseSimulation : startSimulation}
-                    className="w-full h-10 bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background px-4 rounded hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:outline-none focus:ring-2 focus:ring-light-primary-light dark:focus:ring-dark-primary-dark focus:ring-offset-2 flex items-center justify-center gap-2"
+                onClick={handleSimulationAction}
+                className="w-full h-10 bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background px-4 rounded hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:outline-none focus:ring-2 focus:ring-light-primary-light dark:focus:ring-dark-primary-dark focus:ring-offset-2 flex items-center justify-center gap-2"
                 >
-                    {icon}
-                    <span>{text}</span>
+                {icon}
+                <span>{text}</span>
                 </button>
+                <ActionResultFeedback actionResult={simulationActionResult} />
+                
                 <button
-                    onClick={clearSimulationData}
-                    className="w-full h-10 bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary px-4 rounded hover:bg-light-background-secondary dark:hover:bg-dark-background-secondary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary focus:ring-offset-2 flex items-center justify-center gap-2"
+                onClick={handleClearSimulation}
+                className="w-full h-10 bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary px-4 rounded hover:bg-light-background-secondary dark:hover:bg-dark-background-secondary focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary focus:ring-offset-2 flex items-center justify-center gap-2"
                 >
-                    <Icons.Clear size={5} />
-                    <span>Clear</span>
+                <Icons.Clear size={5} />
+                <span>Clear</span>
                 </button>
+                <ActionResultFeedback actionResult={clearActionResult} />
             </div>
 
             <div className="space-y-2">
