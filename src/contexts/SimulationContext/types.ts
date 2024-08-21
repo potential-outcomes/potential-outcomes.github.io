@@ -58,6 +58,7 @@ export interface SimulationSettingsContext {
   selectedTestStatistic: ExperimentalTestStatistic;
   totalSimulations: number;
   pValueType: PValueType;
+  blockingEnabled: boolean;
   setSimulationSpeed: (speed: number) => void;
   setSelectedTestStatistic: (statistic: ExperimentalTestStatistic) => void;
   setTotalSimulations: (total: number) => ActionResult;
@@ -111,6 +112,7 @@ export type SimulationAction =
   | { type: 'SET_SELECTED_TEST_STATISTIC'; payload: ExperimentalTestStatistic }
   | { type: 'SET_TOTAL_SIMULATIONS'; payload: number }
   | { type: 'SET_P_VALUE_TYPE'; payload: PValueType }
+  | { type: 'SET_BLOCKING_ENABLED'; payload: boolean }
   | { type: 'START_SIMULATION' }
   | { type: 'PAUSE_SIMULATION' }
   | { type: 'CLEAR_SIMULATION_DATA' }

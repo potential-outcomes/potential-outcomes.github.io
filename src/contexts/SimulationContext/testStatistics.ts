@@ -39,19 +39,28 @@ const safeMean = (arr: number[]): number => {
 const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
   if (!data || data.length === 0) return 0;
 
-  const groups = data.reduce((acc, row) => {
-    if (row.assignment === null) return acc;
-    const value = row.data[row.assignment];
-    if (typeof value === 'number') {
-      if (!acc[row.assignment]) acc[row.assignment] = [];
-      acc[row.assignment].push(value);
+  const groups: Record<number, number[]> = {};
+
+  // Populate groups
+  for (const row of data) {
+    if (row.assignment !== null) {
+      const value = row.data[row.assignment];
+      if (typeof value === 'number') {
+        if (!groups[row.assignment]) groups[row.assignment] = [];
+        groups[row.assignment].push(value);
+      }
     }
-    return acc;
-  }, {} as Record<number, number[]>);
+  }
 
-  const groupMeans = Object.values(groups).map(group => safeMean(group));
+  // Ensure we have at least two groups
+  if (Object.keys(groups).length < 2) return 0;
 
-  return groupMeans.length >= 2 ? groupMeans[1] - groupMeans[0] : 0;
+  // Calculate means for group 0 (control) and group 1 (treatment)
+  const controlMean = safeMean(groups[0] || []);
+  const treatmentMean = safeMean(groups[1] || []);
+
+  // Return the difference (treatment - control)
+  return treatmentMean - controlMean;
 };
 
 const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {

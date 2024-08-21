@@ -283,7 +283,18 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
       return { ...state, results: { ...state.results, pValue: action.payload }, error: null };
 
     case 'SET_OBSERVED_STATISTIC':
+      console.log('SET_OBSERVED_STATISTIC CALLED', action.payload);
       return { ...state, results: { ...state.results, observedStatistic: action.payload }, error: null };
+
+    case 'SET_BLOCKING_ENABLED':
+        return { 
+          ...state, 
+          settings: { 
+            ...state.settings, 
+            blockingEnabled: action.payload 
+          }, 
+          error: null 
+        };
 
     case 'UNDO':
       if (state.past.length === 0) {

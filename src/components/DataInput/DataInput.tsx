@@ -176,7 +176,6 @@ export default function DataInput() {
   const dataToDisplay = (() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
-      console.log(lastSimulationResult);
       const dummyRow = emptyRow(userData.columns.length);
       return [...lastSimulationResult, dummyRow];
     } else {

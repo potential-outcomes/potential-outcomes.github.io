@@ -27,6 +27,7 @@ export const INITIAL_STATE: SimulationState = {
       selectedTestStatistic: ExperimentalTestStatistic.DifferenceInMeans,
       totalSimulations: 1000,
       pValueType: 'two-tailed' as PValueType,
+      blockingEnabled: true,
       setSimulationSpeed: () => ({ success: false, error: 'Not implemented' }),
       setSelectedTestStatistic: () => ({ success: false, error: 'Not implemented' }),
       setTotalSimulations: () => ({ success: false, error: 'Not implemented' }),

@@ -62,7 +62,7 @@ interface SliderPanelProps {
 
 const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignment, setAssignment, numChildren, color }) => (
   <div 
-    className={`h-full bg-slate-950/80 border-slate-700/60 border-y-2 backdrop-effect relative opacity-75 overflow-hidden flex items-center cursor-text ${
+    className={`h-full bg-slate-950/70 border-slate-700/60 border-y-2 backdrop-effect relative opacity-70 overflow-hidden flex items-center cursor-text ${
       isLeft ? 'border-r-2 justify-end pr-2' : 'border-l-2 pl-2'
     } ${
       assignment === null ? (isLeft ? 'mr-[60%]' : 'ml-[60%]') : ''

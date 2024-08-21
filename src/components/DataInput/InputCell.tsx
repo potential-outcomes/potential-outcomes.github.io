@@ -37,17 +37,6 @@ const InputCell: React.FC<InputCellProps> = ({ value, onChange, delayedPlacehold
         `}
         placeholder={placeholder}
       />
-      {/* <div
-        className={`
-          absolute inset-0 pointer-events-none
-          flex items-center justify-center
-          text-light-text-tertiary dark:text-dark-text-tertiary
-          transition-opacity duration-1000 ease-in-out
-          ${isTransitioning ? 'opacity-0' : 'opacity-100'}
-        `}
-      >
-        {value === null && placeholder}
-      </div> */}
     </div>
   );
 };

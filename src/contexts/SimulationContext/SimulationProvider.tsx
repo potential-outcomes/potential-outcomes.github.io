@@ -2,7 +2,7 @@ import React, { createContext, useReducer, useCallback, useRef, useEffect, useSt
 import { simulationReducer } from './reducer';
 import * as actions from './actions';
 import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, WarningCondition } from './types';
-import { createActionResult, calculatePValue, shuffleWithinBlocks, filterValidRows } from './utils';
+import { createActionResult, calculatePValue, shuffleRowAssignments, filterValidRows } from './utils';
 import { testStatistics } from './testStatistics';
 import { INITIAL_STATE } from './constants';
 
@@ -10,8 +10,9 @@ export const SimulationContext = createContext<SimulationContextType | undefined
 
 export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [state, dispatch] = useReducer(simulationReducer, INITIAL_STATE);
-  // const abortControllerRef = useRef<AbortController | null>(null);
   const simulationSpeedRef = useRef<number>(state.settings.simulationSpeed);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdRef = useRef<number | null>(null);
 
   const dispatchWithResult = useCallback(<T extends any[]>(
     actionCreator: (...args: T) => ReturnType<typeof actions[keyof typeof actions]>,
@@ -81,13 +82,18 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
 
   const simulate = useCallback((data: DataRow[]): SimulationResult => {
     const validData = filterValidRows(data);
-    const shuffledData = shuffleWithinBlocks(validData);
+    const shuffledData = shuffleRowAssignments(validData, state.settings.blockingEnabled);
     return new SimulationResult(shuffledData);
   }, []);
 
   const dynamicDelay = useCallback((baseDelay: number): Promise<void> => {
     const adjustedDelay = baseDelay - (15 * simulationSpeedRef.current);
-    return new Promise(resolve => setTimeout(resolve, Math.max(0, adjustedDelay)));
+    return new Promise((resolve, reject) => {
+      timeoutIdRef.current = window.setTimeout(() => {
+        timeoutIdRef.current = null;
+        resolve();
+      }, Math.max(0, adjustedDelay));
+    });
   }, []);
 
   const runSimulation = useCallback(async (
@@ -116,66 +122,99 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   
       onProgress(simulationResults, currentPValue);
   
-      await dynamicDelay(2000);
+      try {
+        await dynamicDelay(2000);
+      } catch (error) {
+        if (abortSignal.aborted) {
+          return { results: simulationResults, aborted: true };
+        }
+        throw error;
+      }
     }
   
     return { results: simulationResults, aborted: false };
   }, [simulate, state.results.observedStatistic, state.settings.selectedTestStatistic, state.settings.pValueType, dynamicDelay]);
-  
-  const simulationRef = useRef<{
-    run: (signal: AbortSignal) => Promise<void>;
-    abort: () => void;
-  } | null>(null);
 
   useEffect(() => {
-    if (state.control.isSimulating && !simulationRef.current) {
-      const abortController = new AbortController();
+    if (state.control.isSimulating && !abortControllerRef.current) {
+      abortControllerRef.current = new AbortController();
 
-      simulationRef.current = {
-        run: async (signal) => {
-          try {
-            const { results, aborted } = await runSimulation(
-              state.data.userData.rows,
-              state.settings.totalSimulations,
-              state.results.simulationResults,
-              signal,
-              (simulationResults, pValue) => {
-                dispatch(actions.setSimulationResults(simulationResults));
-                dispatch(actions.setPValue(pValue));
-              }
-            );
+      // deep copy of the user data rows
+      const rowsCopy = state.data.userData.rows.map(row => ({ ...row }));
 
-            if (!aborted) {
-              dispatch(actions.setSimulationResults(results));
-              const finalPValue = calculatePValue(
-                state.results.observedStatistic!,
-                results.map(r => r.rows),
-                state.settings.selectedTestStatistic,
-                state.settings.pValueType
-              );
-              dispatch(actions.setPValue(finalPValue));
-            }
-          } catch (error) {
-            console.error('Simulation error:', error);
-          } finally {
-            dispatch(actions.pauseSimulation());
-            simulationRef.current = null;
-          }
-        },
-        abort: () => abortController.abort()
-      };
-
-      simulationRef.current.run(abortController.signal);
-    } else if (!state.control.isSimulating && simulationRef.current) {
-      simulationRef.current.abort();
-      simulationRef.current = null;
+      runSimulation(
+        rowsCopy,
+        state.settings.totalSimulations,
+        state.results.simulationResults,
+        abortControllerRef.current.signal,
+        (simulationResults, pValue) => {
+          dispatch(actions.setSimulationResults(simulationResults));
+          dispatch(actions.setPValue(pValue));
+        }
+      ).then(({ results, aborted }) => {
+        if (!aborted) {
+          dispatch(actions.setSimulationResults(results));
+          const finalPValue = calculatePValue(
+            state.results.observedStatistic!,
+            results.map(r => r.rows),
+            state.settings.selectedTestStatistic,
+            state.settings.pValueType
+          );
+          dispatch(actions.setPValue(finalPValue));
+        }
+      }).catch((error) => {
+        console.error('Simulation error:', error);
+      }).finally(() => {
+        dispatch(actions.pauseSimulation());
+        abortControllerRef.current = null;
+      });
+    } else if (!state.control.isSimulating && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
     }
   }, [state.control.isSimulating, state.data.userData.rows, state.settings.totalSimulations, state.results.simulationResults, state.results.observedStatistic, state.settings.selectedTestStatistic, state.settings.pValueType, runSimulation]);
 
+  const prevObservedStatisticRef = useRef<number | null>(null);
+  const prevUserDataRowsRef = useRef<DataRow[]>([]);
+  
   useEffect(() => {
     const newObservedStatistic = testStatistics[state.settings.selectedTestStatistic].function(state.data.userData.rows);
-    dispatch(actions.setObservedStatistic(newObservedStatistic));
+    // const userDataRowsChanged = !isEqual(prevUserDataRowsRef.current, state.data.userData.rows);
+    
+    // if (prevObservedStatisticRef.current !== newObservedStatistic) {
+    //   if (!userDataRowsChanged) {
+    //     console.log(
+    //       `WARNING: Observed statistic changed from ${prevObservedStatisticRef.current} to ${newObservedStatistic} without user data rows changing`,
+    //       {
+    //         previousValue: prevObservedStatisticRef.current,
+    //         newValue: newObservedStatistic,
+    //         selectedTestStatistic: state.settings.selectedTestStatistic,
+    //         rowCount: state.data.userData.rows.length
+    //       }
+    //     );
+    //   } else {
+    //     console.log(
+    //       `Observed statistic changed from ${prevObservedStatisticRef.current} to ${newObservedStatistic}`,
+    //       {
+    //         previousValue: prevObservedStatisticRef.current,
+    //         newValue: newObservedStatistic,
+    //         selectedTestStatistic: state.settings.selectedTestStatistic,
+    //         rowCount: state.data.userData.rows.length
+    //       }
+    //     );
+    //   }
+    //   prevObservedStatisticRef.current = newObservedStatistic;
+    // }
   
+    // Update the previous user data rows reference
+    // prevUserDataRowsRef.current = state.data.userData.rows;
+  
+    dispatch(actions.setObservedStatistic(newObservedStatistic));
+    
     if (state.results.simulationResults.length > 0) {
       const newPValue = calculatePValue(
         newObservedStatistic,
@@ -186,7 +225,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       dispatch(actions.setPValue(newPValue));
     }
   }, [state.data.userData.rows, state.settings.selectedTestStatistic, state.settings.pValueType, state.results.simulationResults]);
-
+  
   const contextValue: SimulationContextType = {
     data: {
       ...state.data,

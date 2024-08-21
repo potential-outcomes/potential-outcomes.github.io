@@ -30,11 +30,21 @@ export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
   });
 };
 
-export const shuffleWithinBlocks = (rows: DataRow[]): DataRow[] => {
-  // Group rows by block
+export const shuffleRowAssignments = (rows: DataRow[], respectBlocks: boolean): DataRow[] => {
+  if (!respectBlocks) {
+    // If not respecting blocks, simply shuffle all assignments
+    const allAssignments = rows.map(row => row.assignment);
+    const shuffledAssignments = shuffleArray(allAssignments);
+    return rows.map((row, index) => ({
+      ...row,
+      assignment: shuffledAssignments[index]
+    }));
+  }
+
+  // If respecting blocks, proceed with the block-based logic
   const blockGroups: { [key: string]: DataRow[] } = {};
   rows.forEach(row => {
-    const blockKey = row.block || 'andefault';
+    const blockKey = row.block || 'default';
     if (!blockGroups[blockKey]) {
       blockGroups[blockKey] = [];
     }

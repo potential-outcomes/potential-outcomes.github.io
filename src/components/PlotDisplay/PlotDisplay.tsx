@@ -25,7 +25,6 @@ const StatDisplay: React.FC<{ title: string; value: string | number }> = ({ titl
 export const PlotDisplay: React.FC = () => {
   const { theme } = useTheme();
   const { simulationResults, observedStatistic } = useSimulationResults();
-  console.log('observedStatistic', observedStatistic);
   const { selectedTestStatistic, totalSimulations, pValue } = useSimulationState();
 
   const calculatePlotData = useCallback((simulationData: number[], observedStat: number, theme: string) => {

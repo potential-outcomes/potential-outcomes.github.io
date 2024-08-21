@@ -108,3 +108,8 @@ export const undo = (): SimulationAction => ({
 export const redo = (): SimulationAction => ({
   type: 'REDO',
 });
+
+export const setBlockingEnabled = (enabled: boolean): SimulationAction => ({
+  type: 'SET_BLOCKING_ENABLED',
+  payload: enabled,
+});
