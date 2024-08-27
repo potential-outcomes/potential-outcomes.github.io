@@ -91,6 +91,7 @@ export interface SimulationContextType {
   control: SimulationControlContext;
   results: SimulationResultsContext;
   history: SimulationHistoryContext;
+  latestStatisticBarRef: React.MutableRefObject<HTMLElement | null>
   error: ErrorState | null;
 }
 

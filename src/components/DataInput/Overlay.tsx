@@ -10,7 +10,7 @@ interface OverlayProps {
   className?: string;
   children: ReactNode[];
   setAssignment?: (assignment: number | null) => void;
-  index: number;
+  rowIndex: number;
   columnColors: string[];
 }
 
@@ -65,7 +65,7 @@ const SliderPanel: React.FC<SliderPanelProps> = ({ isLeft, shadowSize, assignmen
     className={`h-full bg-slate-950/70 border-slate-700/60 border-y-2 backdrop-effect relative opacity-70 overflow-hidden flex items-center cursor-text ${
       isLeft ? 'border-r-2 justify-end pr-2' : 'border-l-2 pl-2'
     } ${
-      assignment === null ? (isLeft ? 'mr-[60%]' : 'ml-[60%]') : ''
+      assignment === null ? (isLeft ? 'mr-[75%]' : 'ml-[75%]') : ''
     } transition-[margin] duration-700 ${color}`}
     style={{
       boxShadow: `${isLeft ? shadowSize : -shadowSize}px 0 7px -1px rgb(0 0 0 / 0.4)`,
@@ -94,9 +94,10 @@ export const Overlay: React.FC<OverlayProps> = ({
   className = '',
   children,
   setAssignment,
-  index,
+  rowIndex,
   columnColors
 }) => {
+  console.log('duration', duration);
   const x = useMotionValue('0');
   const [leftShadow, rightShadow] = useBoxShadow(x);
 
@@ -136,7 +137,7 @@ export const Overlay: React.FC<OverlayProps> = ({
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full h-[98%] flex rounded-md overflow-hidden">
           {children.map((child, index) => (
-            <div key={index} className={`w-[50%] flex items-center justify-center transition-all duration-300 ${getParentStyle(index, assignment, columnColors[index])}`}>
+            <div key={index} className={`w-[50%] flex items-center justify-center transition-all duration-200 ${getParentStyle(index, assignment, columnColors[index])} no-obstruct-${rowIndex}`}>
               {child}
             </div>
           ))}
@@ -147,7 +148,7 @@ export const Overlay: React.FC<OverlayProps> = ({
           className="absolute w-full top-0 h-full"
           initial={false}
           animate={{
-            x: assignment === null ? '25%' : `${assignment * (100 / children.length) + (50 / children.length)}%`
+            x: assignment === null ? `0%` : `${assignment * (100 / children.length) + (50 / children.length)}%`
           }}
           transition={{ type: "tween", ease: "easeInOut", duration }}
           style={{ x }}

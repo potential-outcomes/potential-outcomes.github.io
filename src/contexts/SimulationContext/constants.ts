@@ -4,13 +4,16 @@ import { SimulationState, PValueType, ExperimentalTestStatistic } from './types'
 
 const BASE_DELAY = 1500;
 
+export const DEFAULT_COLUMN_COLORS = ['text-purple-500', 'text-blue-500', 'text-yellow-500', 'text-green-500'];
+
 // Initial state
 export const INITIAL_STATE: SimulationState = {
+  latestStatisticBarRef: { current: null },
     data: {
       userData: {
         rows: [{ data: [null, null], assignment: null , block: null}],
-        columns: [{name: "Control", color: 'text-purple-500' }, {name: "Treatment", color: "text-blue-500"}],
-        colorStack: ['text-yellow-500', 'text-green-500']
+        columns: [{name: "Control", color: DEFAULT_COLUMN_COLORS[0] }, {name: "Treatment", color: DEFAULT_COLUMN_COLORS[1]}],
+        colorStack: DEFAULT_COLUMN_COLORS.slice(2),
       },
       setUserData: () => ({ success: false, error: 'Not implemented' }),
       resetUserData: () => ({ success: false, error: 'Not implemented' }),

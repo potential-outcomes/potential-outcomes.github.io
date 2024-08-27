@@ -16,6 +16,7 @@ export interface TestStatisticMeta {
   name: string;
   function: (rows: DataRow[]) => number;
   supportsMultipleTreatments: boolean;
+  alwaysPositive: boolean;
 }
 
 export interface TestStatisticFunction {
@@ -234,32 +235,38 @@ export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta
   [ExperimentalTestStatistic.DifferenceInMeans]: {
     name: "Difference in Means",
     function: differenceInMeans,
-    supportsMultipleTreatments: false
+    supportsMultipleTreatments: false,
+    alwaysPositive: false,
   },
   [ExperimentalTestStatistic.WilcoxonRankSum]: {
     name: "Wilcoxon Rank-Sum",
     function: wilcoxonRankSum,
-    supportsMultipleTreatments: false
+    supportsMultipleTreatments: false,
+    alwaysPositive: false,
   },
   [ExperimentalTestStatistic.DifferenceInMedians]: {
     name: "Difference in Medians",
     function: differenceInMedians,
-    supportsMultipleTreatments: false
+    supportsMultipleTreatments: false,
+    alwaysPositive: false,
   },
   [ExperimentalTestStatistic.RatioOfVariances]: {
     name: "Ratio of Variances",
     function: ratioOfVariances,
-    supportsMultipleTreatments: false
+    supportsMultipleTreatments: false,
+    alwaysPositive: true,
   },
   [ExperimentalTestStatistic.FStatistic]: {
     name: "F-Statistic",
     function: fStatistic,
-    supportsMultipleTreatments: true
+    supportsMultipleTreatments: true,
+    alwaysPositive: true,
   },
   [ExperimentalTestStatistic.BetweenGroupVariance]: {
     name: "Between-Group Variance",
     function: betweenGroupVariance,
-    supportsMultipleTreatments: true
+    supportsMultipleTreatments: true,
+    alwaysPositive: true,
   }
 };
 

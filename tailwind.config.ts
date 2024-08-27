@@ -7,10 +7,21 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "!./node_modules",
   ],
+  safelist: [
+    {
+      pattern: /^h-/,
+      variants: ['hover', 'focus', 'lg'],
+    },
+    {
+      pattern: /^w-/,
+      variants: ['hover', 'focus', 'lg'],
+    },
+  ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        inherit: 'inherit',
         light: {
           background: {
             DEFAULT: '#FFFFFF',

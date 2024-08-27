@@ -25,6 +25,10 @@ export function useFullSimulationContext(): SimulationContextType {
   return useSimulationContextCheck();
 }
 
+export function useLatestStatisticBarRef(): React.MutableRefObject<HTMLElement | null> {
+  return useSimulationContextCheck().latestStatisticBarRef;
+}
+
 // Hook to access simulation data
 export function useSimulationData(): SimulationDataContext {
   return useSimulationContextCheck().data;

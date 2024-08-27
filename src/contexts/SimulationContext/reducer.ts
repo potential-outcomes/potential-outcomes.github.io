@@ -1,3 +1,4 @@
+// potential-outcomes/src/contexts/SimulationContext/reducer.ts
 import { SimulationState, SimulationAction, UserDataState, ErrorState } from './types';
 import { emptyRow, validateSimulationSpeed, validateSelectedTestStatistic, validateTotalSimulations, validatePValueType } from './utils';
 import { ExperimentalTestStatistic, testStatistics } from './testStatistics';

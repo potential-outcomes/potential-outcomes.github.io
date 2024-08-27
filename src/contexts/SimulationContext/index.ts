@@ -9,7 +9,8 @@ export {
   useSimulationControl,
   useSimulationResults,
   useSimulationHistory,
-  useSimulationState
+  useSimulationState,
+  useLatestStatisticBarRef
 } from './hooks';
 
 export * from './actions';

@@ -11,21 +11,15 @@ import {
   calculateColumnAverages,
   calculateColumnStandardDeviations,
   emptyRow,
-  speedToDuration
+  speedToDuration,
+  useLatestStatisticBarRef
 } from '@/contexts/SimulationContext';
 import { Icons } from '../common/Icons';
 import { ColumnHeader } from './ColumnHeader';
 import { motion } from 'framer-motion';
 import { Overlay } from './Overlay';
-import DataControls from './DataControls'
+import DataControls from './DataControls';
 import InputCell from './InputCell';
-
-export const COLUMN_PROPORTIONS = {
-  index: 1,
-  data: 6,
-  assignment: 2,
-  actions: 1
-};
 
 interface ColumnAveragesProps {
   averages: (number | null)[];
@@ -94,6 +88,8 @@ interface TableRowProps {
   showBlocks: boolean;
   duration?: number;
   isSimulating: boolean;
+  collectionPoint: { x: number; y: number };
+  triggerPhantom: boolean;
 }
 
 const TableRow: React.FC<TableRowProps> = ({ 
@@ -110,7 +106,9 @@ const TableRow: React.FC<TableRowProps> = ({
   columns,
   showBlocks,
   duration = 0.5,
-  isSimulating
+  isSimulating,
+  collectionPoint,
+  triggerPhantom
 }) => {
   return (
     <div className={`flex items-stretch w-full h-14 py-2 bg-light-background dark:bg-dark-background ${isUnactivated ? 'sticky bottom-0' : ''}`}>
@@ -134,20 +132,24 @@ const TableRow: React.FC<TableRowProps> = ({
           assignment={row.assignment}
           setAssignment={(assignment) => !isSimulating && setAssignment(index, assignment)}
           children={
-            row.data.map((_, i) => (
+            row.data.map((cellValue, cellIndex) => (
               <InputCell
-                key={i}
-                value={row.data[i]}
-                onChange={(value) => !isSimulating && updateCell(index, i, value)}
-                delayedPlaceholder={row.assignment === i ? columns[i].name : "?"}
+                key={cellIndex}
+                value={cellValue}
+                onChange={(value) => !isSimulating && updateCell(index, cellIndex, value)}
+                delayedPlaceholder={row.assignment === cellIndex ? columns[cellIndex].name : "?"}
                 disabled={isSimulating}
+                collectionPoint={collectionPoint}
+                isSimulating={isSimulating}
+                triggerPhantom={row.assignment === cellIndex && triggerPhantom}
+                phantomDuration={duration}
+                rowIndex={index}
               />
             ))
           }
-          index={index}
-          duration={duration}
+          rowIndex={index}
+          duration={duration * 0.5}
           columnColors={columns.map((column) => column.color)}
-          isSimulating={isSimulating}
         />
       </div>
 
@@ -211,12 +213,16 @@ export default function DataInput() {
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showBlocks, setShowBlocks] = useState(false);
+  const [triggerPhantom, setTriggerPhantom] = useState(false);
+  const prevSimulationResultsLengthRef = useRef(0);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(userData.columns.map(() => false));
   const [pulsate, setPulsate] = useState(false);
+  const [collectionPoint, setCollectionPoint] = useState({ x: 500, y: 500 });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const averagesRef = useRef<HTMLDivElement>(null);
 
-  const dataToDisplay = (() => {
+  const dataToDisplay = useMemo(() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
       const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
       const dummyRow = emptyRow(userData.columns.length);
@@ -224,7 +230,44 @@ export default function DataInput() {
     } else {
       return userData.rows;
     }
-  })();
+  }, [isSimulating, simulationResults, userData.rows]);
+
+  const duration = Math.min((speedToDuration(simulationSpeed)/900), 0.5);
+
+  useEffect(() => {
+    if (isSimulating && simulationResults) {
+      const currentLength = simulationResults.length;
+      if (currentLength > prevSimulationResultsLengthRef.current) {
+        // Delay the start of triggerPhantom
+        const startDelay = setTimeout(() => {
+          setTriggerPhantom(true);
+          const endTimer = setTimeout(() => setTriggerPhantom(false), 20);
+          
+          // Clean up the end timer when the effect is cleaned up
+          return () => clearTimeout(endTimer);
+        }, (500 * duration)); // Adjust this delay as needed (currently set to 100ms)
+  
+        prevSimulationResultsLengthRef.current = currentLength;
+        
+        // Clean up the start delay timer if the effect is cleaned up before it fires
+        return () => clearTimeout(startDelay);
+      }
+    } else {
+      prevSimulationResultsLengthRef.current = 0;
+    }
+  }, [isSimulating, simulationResults.length]);
+
+  const latestStatisticBarRef = useLatestStatisticBarRef();
+
+  useEffect(() => {
+    if (latestStatisticBarRef.current) {
+      const rect = latestStatisticBarRef.current.getBoundingClientRect();
+      setCollectionPoint({
+        x: rect.left + (rect.width / 4),
+        y: rect.top - 20,
+      });
+    }
+  }, [latestStatisticBarRef.current]);
 
   useEffect(() => {
     if (!isSimulating && (userData.rows.length === 0 || !userData.rows[userData.rows.length - 1].data.some(cell => cell === null))) {
@@ -277,8 +320,10 @@ export default function DataInput() {
         isCollapsed={isCollapsed}
         columns={userData.columns}
         showBlocks={showBlocks}
-        duration={Math.min((speedToDuration(simulationSpeed)/900), 0.5)}
+        duration={isSimulating ? duration : 1.0}
         isSimulating={isSimulating}
+        collectionPoint={collectionPoint}
+        triggerPhantom={triggerPhantom}
       />
     ));
 
@@ -296,7 +341,7 @@ export default function DataInput() {
     }
 
     return rows;
-  }, [dataToDisplay, isCollapsed, isSimulating, showBlocks, userData.columns, addRow, deleteRow, setAssignment, setBlock, updateCell]);
+  }, [dataToDisplay, isCollapsed, isSimulating, showBlocks, userData.columns, addRow, deleteRow, setAssignment, setBlock, updateCell, collectionPoint, triggerPhantom]);
 
   return (
     <>
@@ -315,7 +360,7 @@ export default function DataInput() {
               transition={{ duration: Math.min(speedToDuration(simulationSpeed)/1800, 0.25) }}
             />
           )}
-          <div className="flex items-stretch w-full rounded-t-lg h-12 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
+          <div className="flex items-stretch w-full rounded-t-lg h-12 flex-shrink-0 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
             <div className="w-12 flex-shrink-0 flex items-center justify-center font-medium">#</div>
             <div className="flex-grow flex">
               {userData.columns.map((column, index) => (
@@ -370,17 +415,14 @@ export default function DataInput() {
           >
             {renderRows}
           </div>
-          <div className="flex-shrink-0">
-          <ColumnAverages 
+          <div className="flex-shrink-0" ref={averagesRef}>
+            <ColumnAverages 
               averages={columnAverages} 
               standardDeviations={columnStandardDeviations}
               columnColors={userData.columns.map((column) => column.color)}
               showBlocks={showBlocks}
             />
           </div>
-          {/* {showBlocks && // placeholder with w-24
-            <div className="flex items-center justify-center w-24 flex-shrink-0"></div>
-          } */}
         </motion.div>
       </div>
     </>

@@ -6,7 +6,8 @@ import {
     useSimulationState,
     testStatistics,
     ExperimentalTestStatistic,
-    ActionResult
+    ActionResult,
+    PValueType
 } from '@/contexts/SimulationContext';
 import { ActionButton } from './ActionButton';
 import { Icons } from '../common/Icons';
@@ -42,6 +43,14 @@ export const SimulationControls: React.FC = () => {
   const [inputTotalSimulations, setInputTotalSimulations] = useState(totalSimulations.toString());
   const [simulationActionResult, setSimulationActionResult] = useState<ActionResult | null>(null);
   const [clearActionResult, setClearActionResult] = useState<ActionResult | null>(null);
+
+  const isSelectedTestStatisticAlwaysPositive = testStatistics[selectedTestStatistic].alwaysPositive;
+
+  useEffect(() => {
+    if (isSelectedTestStatisticAlwaysPositive && pValueType !== 'right-tailed') {
+      setPValueType('right-tailed');
+    }
+  }, [selectedTestStatistic, isSelectedTestStatisticAlwaysPositive, pValueType, setPValueType]);
 
   useEffect(() => {
     setInputTotalSimulations(totalSimulations.toString());
@@ -176,13 +185,18 @@ export const SimulationControls: React.FC = () => {
                 <select
                     id="pValueType"
                     value={pValueType}
-                    onChange={(e) => setPValueType(e.target.value as 'two-tailed' | 'left-tailed' | 'right-tailed')}
+                    onChange={(e) => setPValueType(e.target.value as PValueType)}
                     className="w-full border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-                >
-                    <option value="two-tailed">Two-tailed</option>
-                    <option value="left-tailed">Left-tailed</option>
+                    disabled={isSelectedTestStatisticAlwaysPositive}
+                  >
+                    {!isSelectedTestStatisticAlwaysPositive && (
+                      <>
+                        <option value="two-tailed">Two-tailed</option>
+                        <option value="left-tailed">Left-tailed</option>
+                      </>
+                    )}
                     <option value="right-tailed">Right-tailed</option>
-                </select>
+                  </select>
             </div>
         </div>
     );

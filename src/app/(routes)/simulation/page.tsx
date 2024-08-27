@@ -11,10 +11,12 @@ const SimulationPage: React.FC = () => {
     <SimulationProvider>
       <div className="flex flex-col h-screen py-3 px-5">
         <div className="flex-grow flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-4">
-          <Card className="w-full lg:w-2/5">
-            <SimulationControls />
-          </Card>
-          <Card className="w-full lg:w-3/5 flex flex-col">
+        <div className="w-full lg:w-1/3 flex flex-col">
+            <Card className="flex-shrink-0">
+              <SimulationControls />
+            </Card>
+          </div>
+          <Card className="w-full lg:w-2/3 flex flex-col">
             <div className="flex-shrink pb-5 max-h-[55%]">
               <DataInput />
             </div>
