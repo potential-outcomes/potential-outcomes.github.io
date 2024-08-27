@@ -21,6 +21,10 @@ export function Tooltip({
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
 
+  if (content === '') {
+    return <>{children}</>;
+  }
+
   const showTooltip = () => {
     setIsVisible(true);
   };
@@ -57,7 +61,7 @@ export function Tooltip({
 
   return (
     <div
-      className={`relative inline-block ${className}`}
+      className={`relative inline ${className}`}
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
     >

@@ -2,7 +2,7 @@ import React, { createContext, useReducer, useCallback, useRef, useEffect, useSt
 import { simulationReducer } from './reducer';
 import * as actions from './actions';
 import { SimulationContextType, SimulationState, ActionResult, DataRow, SimulationResult, PValueType, WarningCondition } from './types';
-import { createActionResult, calculatePValue, shuffleRowAssignments, filterValidRows } from './utils';
+import { createActionResult, calculatePValue, shuffleRowAssignments, filterValidRows, speedToDuration } from './utils';
 import { testStatistics } from './testStatistics';
 import { INITIAL_STATE } from './constants';
 
@@ -86,8 +86,10 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     return new SimulationResult(shuffledData);
   }, []);
 
-  const dynamicDelay = useCallback((baseDelay: number): Promise<void> => {
-    const adjustedDelay = baseDelay - (15 * simulationSpeedRef.current);
+  const dynamicDelay = useCallback((): Promise<void> => {
+    console.log('simulationSpeedRef.current', simulationSpeedRef.current);
+    const adjustedDelay = speedToDuration(simulationSpeedRef.current);
+    console.log('adjustedDelay', adjustedDelay);
     return new Promise((resolve, reject) => {
       timeoutIdRef.current = window.setTimeout(() => {
         timeoutIdRef.current = null;
@@ -115,7 +117,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   
       const currentPValue = calculatePValue(
         state.results.observedStatistic!,
-        simulationResults.map(r => r.rows),
+        simulationResults,
         state.settings.selectedTestStatistic,
         state.settings.pValueType
       );
@@ -123,7 +125,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
       onProgress(simulationResults, currentPValue);
   
       try {
-        await dynamicDelay(2000);
+        await dynamicDelay();
       } catch (error) {
         if (abortSignal.aborted) {
           return { results: simulationResults, aborted: true };
@@ -139,7 +141,6 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     if (state.control.isSimulating && !abortControllerRef.current) {
       abortControllerRef.current = new AbortController();
 
-      // deep copy of the user data rows
       const rowsCopy = state.data.userData.rows.map(row => ({ ...row }));
 
       runSimulation(
@@ -156,7 +157,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
           dispatch(actions.setSimulationResults(results));
           const finalPValue = calculatePValue(
             state.results.observedStatistic!,
-            results.map(r => r.rows),
+            results,
             state.settings.selectedTestStatistic,
             state.settings.pValueType
           );
@@ -178,47 +179,16 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
     }
   }, [state.control.isSimulating, state.data.userData.rows, state.settings.totalSimulations, state.results.simulationResults, state.results.observedStatistic, state.settings.selectedTestStatistic, state.settings.pValueType, runSimulation]);
 
-  const prevObservedStatisticRef = useRef<number | null>(null);
-  const prevUserDataRowsRef = useRef<DataRow[]>([]);
   
   useEffect(() => {
     const newObservedStatistic = testStatistics[state.settings.selectedTestStatistic].function(state.data.userData.rows);
-    // const userDataRowsChanged = !isEqual(prevUserDataRowsRef.current, state.data.userData.rows);
-    
-    // if (prevObservedStatisticRef.current !== newObservedStatistic) {
-    //   if (!userDataRowsChanged) {
-    //     console.log(
-    //       `WARNING: Observed statistic changed from ${prevObservedStatisticRef.current} to ${newObservedStatistic} without user data rows changing`,
-    //       {
-    //         previousValue: prevObservedStatisticRef.current,
-    //         newValue: newObservedStatistic,
-    //         selectedTestStatistic: state.settings.selectedTestStatistic,
-    //         rowCount: state.data.userData.rows.length
-    //       }
-    //     );
-    //   } else {
-    //     console.log(
-    //       `Observed statistic changed from ${prevObservedStatisticRef.current} to ${newObservedStatistic}`,
-    //       {
-    //         previousValue: prevObservedStatisticRef.current,
-    //         newValue: newObservedStatistic,
-    //         selectedTestStatistic: state.settings.selectedTestStatistic,
-    //         rowCount: state.data.userData.rows.length
-    //       }
-    //     );
-    //   }
-    //   prevObservedStatisticRef.current = newObservedStatistic;
-    // }
-  
-    // Update the previous user data rows reference
-    // prevUserDataRowsRef.current = state.data.userData.rows;
   
     dispatch(actions.setObservedStatistic(newObservedStatistic));
     
     if (state.results.simulationResults.length > 0) {
       const newPValue = calculatePValue(
         newObservedStatistic,
-        state.results.simulationResults.map(r => r.rows),
+        state.results.simulationResults,
         state.settings.selectedTestStatistic,
         state.settings.pValueType
       );

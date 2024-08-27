@@ -209,7 +209,7 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
                     (row.assignment >= columnIndexToRemove ? row.assignment - 1 : row.assignment),
       }));
       const updatedColumns = state.data.userData.columns.filter((_, index) => index !== columnIndexToRemove);
-      const updatedColorStack = [...state.data.userData.colorStack, removedColumn.color];
+      const updatedColorStack = [removedColumn.color, ...state.data.userData.colorStack];
     
       return {
         ...state,
@@ -283,7 +283,6 @@ export const simulationReducer = (state: SimulationState, action: SimulationActi
       return { ...state, results: { ...state.results, pValue: action.payload }, error: null };
 
     case 'SET_OBSERVED_STATISTIC':
-      console.log('SET_OBSERVED_STATISTIC CALLED', action.payload);
       return { ...state, results: { ...state.results, observedStatistic: action.payload }, error: null };
 
     case 'SET_BLOCKING_ENABLED':

@@ -12,6 +12,7 @@ interface ColumnHeaderProps {
   removeColumn: () => void;
   removable: boolean;
   color: string;
+  disabled?: boolean;
 }
 
 export function ColumnHeader({
@@ -22,10 +23,25 @@ export function ColumnHeader({
   onClick,
   removeColumn,
   removable,
-  color
+  color,
+  disabled = false
 }: ColumnHeaderProps) {
+  const handleClick = (event: React.MouseEvent) => {
+    if (!disabled) {
+      onClick();
+    }
+    event.preventDefault();
+  };
+
+  const handleRemove = (event: React.MouseEvent) => {
+    if (!disabled) {
+      removeColumn();
+    }
+    event.preventDefault();
+  };
+
   return (
-    <div className={`relative flex items-center justify-center h-full px-2 ${color}`}>
+    <div className={`relative flex items-center justify-center h-full px-2 ${color} ${disabled ? 'opacity-90' : ''}`}>
       {isEditing ? (
         <input
           type="text"
@@ -34,29 +50,28 @@ export function ColumnHeader({
           onBlur={onBlur}
           className={`w-full bg-transparent truncate text-center border-b-2 focus:outline-none ${color}`}
           autoFocus
+          disabled={disabled}
         />
       ) : (
-        <>
-          <div className="flex items-center">
-            <span 
-              className={`truncate cursor-text !${color}`}
-              onClick={onClick}
-            >
-              {value}
-            </span>
-            { removable && 
+        <div className="flex items-center">
+          <span 
+            className={`truncate ${disabled ? 'cursor-default' : 'cursor-text'} !${color}`}
+            onClick={handleClick}
+          >
+            {value}
+          </span>
+          {removable && !disabled && 
             <Tooltip content="Delete column" position="bottom" className='w-5 h-5'>
               <button 
-                onClick={removeColumn}
+                onClick={handleRemove}
                 className={`ml-1 ${color} hover:!text-light-error dark:hover:!text-dark-error focus:outline-none`}
                 aria-label="Delete column"
               >
                 <Icons.Clear/>
               </button>
             </Tooltip>
-            }
-          </div>
-        </>
+          }
+        </div>
       )}
     </div>
   );

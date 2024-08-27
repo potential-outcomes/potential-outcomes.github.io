@@ -25,7 +25,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-light-background-secondary dark:bg-dark-background-secondary text-light-text dark:text-dark-text`}>
+      <body className={`${inter.className} bg-light-background-secondary dark:bg-dark-background-secondary text-light-text-secondary dark:text-dark-text-secondary`}>
         <ThemeProvider>
         <HiddenColorClasses />
           <TopBar links={links} />

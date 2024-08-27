@@ -8,7 +8,8 @@ export enum ExperimentalTestStatistic {
   WilcoxonRankSum = 'wilcoxonRankSum',
   DifferenceInMedians = 'differenceInMedians',
   RatioOfVariances = 'ratioOfVariances',
-  FStatistic = 'fStatistic'
+  FStatistic = 'fStatistic',
+  BetweenGroupVariance = 'betweenGroupVariance'
 }
 
 export interface TestStatisticMeta {
@@ -202,6 +203,33 @@ const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
   return F;
 };
 
+const betweenGroupVariance: TestStatisticFunction = (data: DataRow[]) => {
+  if (!data || data.length === 0) return 0;
+
+  const groups = data.reduce((acc, row) => {
+    if (row.assignment !== null) {
+      const value = row.data[row.assignment];
+      if (typeof value === 'number') {
+        if (!acc[row.assignment]) acc[row.assignment] = [];
+        acc[row.assignment].push(value);
+      }
+    }
+    return acc;
+  }, {} as Record<number, number[]>);
+
+  const groupMeans = Object.values(groups).map(group => safeMean(group));
+  const groupSizes = Object.values(groups).map(group => group.length);
+  const allValues = Object.values(groups).flat();
+  const overallMean = safeMean(allValues);
+
+  const betweenGroupSS = groupMeans.reduce((sum, groupMean, index) => 
+    sum + groupSizes[index] * Math.pow(groupMean - overallMean, 2), 0
+  );
+
+  const totalGroups = Object.keys(groups).length;
+  return totalGroups > 1 ? betweenGroupSS / (totalGroups - 1) : 0;
+};
+
 export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta> = {
   [ExperimentalTestStatistic.DifferenceInMeans]: {
     name: "Difference in Means",
@@ -227,7 +255,19 @@ export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta
     name: "F-Statistic",
     function: fStatistic,
     supportsMultipleTreatments: true
+  },
+  [ExperimentalTestStatistic.BetweenGroupVariance]: {
+    name: "Between-Group Variance",
+    function: betweenGroupVariance,
+    supportsMultipleTreatments: true
   }
 };
 
-export { differenceInMeans, wilcoxonRankSum, differenceInMedians, ratioOfVariances, fStatistic };
+export { 
+  differenceInMeans, 
+  wilcoxonRankSum, 
+  differenceInMedians, 
+  ratioOfVariances, 
+  fStatistic,
+  betweenGroupVariance
+};

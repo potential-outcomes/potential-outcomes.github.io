@@ -1,6 +1,6 @@
 // contexts/SimulationContext/utils.ts
 
-import { DataRow, ActionResult } from './types';
+import { DataRow, ActionResult, SimulationResult } from './types';
 import { ExperimentalTestStatistic, testStatistics } from './testStatistics';
 
 // Utility function to create a new row
@@ -27,6 +27,31 @@ export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
   return rows[0].data.map((_, index) => {
     const group = groups[index] || [];
     return group.length > 0 ? group.reduce((sum, value) => sum + value, 0) / group.length : null;
+  });
+};
+
+export const calculateColumnStandardDeviations = (rows: DataRow[]): (number | null)[] => {
+  const groups = rows.reduce((acc, row, index) => {
+    // Skip the last row if it's unactivated
+    if (index === rows.length - 1 && row.data.every(cell => cell === null)) return acc;
+
+    row.data.forEach((value, colIndex) => {
+      if (value !== null && row.assignment === colIndex) {
+        if (!acc[colIndex]) acc[colIndex] = [];
+        acc[colIndex].push(value);
+      }
+    });
+    return acc;
+  }, {} as Record<number, number[]>);
+
+  return rows[0].data.map((_, index) => {
+    const group = groups[index] || [];
+    if (group.length === 0) return null;
+
+    const average = group.reduce((sum, value) => sum + value, 0) / group.length;
+    const squaredDifferences = group.map(value => Math.pow(value - average, 2));
+    const variance = squaredDifferences.reduce((sum, value) => sum + value, 0) / group.length;
+    return Math.sqrt(variance);
   });
 };
 
@@ -83,7 +108,7 @@ export const filterValidRows = (rows: DataRow[]): DataRow[] => {
 
 export const calculatePValue = (
   originalTestStatistic: number,
-  simulationResults: DataRow[][],
+  simulationResults: SimulationResult[],
   testStatistic: ExperimentalTestStatistic,
   pValueType: 'two-tailed' | 'left-tailed' | 'right-tailed'
 ): number => {
@@ -93,23 +118,28 @@ export const calculatePValue = (
   switch (pValueType) {
     case 'two-tailed':
       extremeCount = simulationResults.filter(result => 
-        Math.abs(testStatistics[testStatistic].function(result)) >= Math.abs(originalTestStatistic)
+        Math.abs(result.getTestStatistic(testStatistic)) >= Math.abs(originalTestStatistic)
       ).length;
       break;
     case 'left-tailed':
       extremeCount = simulationResults.filter(result => 
-        testStatistics[testStatistic].function(result) <= originalTestStatistic
+        result.getTestStatistic(testStatistic) <= originalTestStatistic
       ).length;
       break;
     case 'right-tailed':
       extremeCount = simulationResults.filter(result => 
-        testStatistics[testStatistic].function(result) >= originalTestStatistic
+        result.getTestStatistic(testStatistic) >= originalTestStatistic
       ).length;
       break;
   }
 
-  return extremeCount / totalSimulations;
+  const pValue = extremeCount / totalSimulations;
+
+  return pValue;
 };
+
+export const sigmoid = (x: number): number => 1 / (1 + Math.exp(-x));
+export const speedToDuration = (speed: number): number => Math.max(1500 - (sigmoid((speed - 50) / 10) * 1500), 2);
 
 export const validateSimulationSpeed = (speed: number): boolean => speed >= 1 && speed <= 100;
 export const validateSelectedTestStatistic = (stat: ExperimentalTestStatistic): boolean => 

@@ -2,6 +2,8 @@
 
 import { SimulationState, PValueType, ExperimentalTestStatistic } from './types';
 
+const BASE_DELAY = 1500;
+
 // Initial state
 export const INITIAL_STATE: SimulationState = {
     data: {

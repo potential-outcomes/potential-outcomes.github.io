@@ -16,9 +16,11 @@ import {
 const Plot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
 
 const StatDisplay: React.FC<{ title: string; value: string | number }> = ({ title, value }) => (
-  <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-2 rounded-lg flex items-center justify-evenly">
-    <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">{title}</h4>
-    <p className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary ml-2">{value}</p>
+  <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-2 rounded-lg flex items-center justify-between min-w-0">
+    <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary truncate flex-shrink-0 mr-2">{title}</h4>
+    <p className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary truncate min-w-0 flex-shrink text-right">
+      {value}
+    </p>
   </div>
 );
 

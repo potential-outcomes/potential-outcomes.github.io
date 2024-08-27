@@ -26,7 +26,9 @@ export {
   validateTotalSimulations,
   validatePValueType,
   createActionResult,
-  calculateColumnAverages
+  calculateColumnAverages,
+  calculateColumnStandardDeviations,
+  speedToDuration
 } from './utils';
 
 export {

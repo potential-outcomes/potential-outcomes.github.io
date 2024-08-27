@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   className?: string;
+  ariaLabel?: string;
 }
 
-export const Switch: React.FC<SwitchProps> = ({
+export const Switch: React.FC<SwitchProps> = memo(({
   checked,
   onChange,
   disabled = false,
   className = '',
+  ariaLabel = 'Toggle switch',
 }) => {
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -22,28 +24,26 @@ export const Switch: React.FC<SwitchProps> = ({
     }
   };
 
+  const baseClasses = 'relative inline-flex items-center w-10 h-5 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-light-primary dark:focus:ring-dark-primary';
+  const cursorClasses = disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer';
+  const backgroundClasses = checked
+    ? 'bg-light-primary dark:bg-dark-primary'
+    : 'bg-gray-300 dark:bg-gray-600';
+
   return (
     <div
-      className={`relative inline-block w-8 h-4 transition-colors duration-200 ease-in-out rounded-full focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-light-primary dark:focus-within:ring-dark-primary ${
-        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-      } ${className}`}
+      className={`${baseClasses} ${cursorClasses} ${backgroundClasses} ${className}`}
       onClick={() => !disabled && onChange(!checked)}
       onKeyDown={handleKeyDown}
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       tabIndex={disabled ? -1 : 0}
     >
-      <div
-        className={`absolute left-0 top-0 w-full h-full rounded-full transition-colors duration-200 ease-in-out ${
-          checked
-            ? 'bg-light-primary dark:bg-dark-primary'
-            : 'bg-gray-300 dark:bg-gray-600'
-        }`}
-      />
-      <div
-        className={`absolute left-0 top-0 w-4 h-4 transform transition-transform duration-200 ease-in-out rounded-full bg-white shadow-md ${
-          checked ? 'translate-x-4' : 'translate-x-0'
-        }`}
+      <span
+        className={`${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        } inline-block w-5 h-5 transform transition-transform duration-300 ease-in-out rounded-full bg-white shadow-md hover:shadow-lg`}
       />
       <input
         type="checkbox"
@@ -51,9 +51,12 @@ export const Switch: React.FC<SwitchProps> = ({
         checked={checked}
         onChange={() => !disabled && onChange(!checked)}
         disabled={disabled}
+        aria-hidden="true"
       />
     </div>
   );
-};
+});
+
+Switch.displayName = 'Switch';
 
 export default Switch;
