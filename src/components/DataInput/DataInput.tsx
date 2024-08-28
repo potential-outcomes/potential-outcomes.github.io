@@ -267,7 +267,7 @@ export default function DataInput() {
         y: rect.top - 20,
       });
     }
-  }, [latestStatisticBarRef.current]);
+  }, [simulationResults.length, latestStatisticBarRef.current]);
 
   useEffect(() => {
     if (!isSimulating && (userData.rows.length === 0 || !userData.rows[userData.rows.length - 1].data.some(cell => cell === null))) {

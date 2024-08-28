@@ -62,20 +62,16 @@ const InputCell: React.FC<InputCellProps> = ({
 
   useEffect(() => {
     if (triggerPhantom && value !== null) {
-      const spawnTimer = setTimeout(() => {
-        if (isInputUnobstructed()) {  // Check obstruction right before spawning
-          const newPhantom: PhantomInstance = {
-            id: phantomIdRef.current++,
-            value: value,
-            startPosition: getInputPosition(),
-          };
-          setPhantoms(prevPhantoms => [...prevPhantoms, newPhantom]);
-        } else {
-          console.log('Phantom spawn prevented due to obstruction');
-        }
-      }, spawnDelay);
-
-      return () => clearTimeout(spawnTimer);
+      if (isInputUnobstructed()) {  // Check obstruction right before spawning
+        const newPhantom: PhantomInstance = {
+          id: phantomIdRef.current++,
+          value: value,
+          startPosition: getInputPosition(),
+        };
+        setPhantoms(prevPhantoms => [...prevPhantoms, newPhantom]);
+      } else {
+        console.log('Phantom spawn prevented due to obstruction');
+      }
     }
   }, [isSimulating, triggerPhantom, value, spawnDelay]);
 

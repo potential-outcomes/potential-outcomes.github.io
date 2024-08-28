@@ -9,6 +9,7 @@ import {
   useSimulationResults,
   useLatestStatisticBarRef,
   testStatistics,
+  SimulationResult,
 } from '@/contexts/SimulationContext';
 
 const Plot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
@@ -38,8 +39,8 @@ export const PlotDisplay: React.FC = () => {
   const calculatePlotData = useCallback((simulationData: number[], observedStat: number, theme: string) => {
     const numBins = 20;
 
-    const minResult = simulationData.length > 0 ? Math.min(...simulationData, observedStat) : observedStat - 9.5;
-    const maxResult = simulationData.length > 0 ? Math.max(...simulationData, observedStat) : observedStat + 9.5;
+    const minResult = Math.min(...simulationData, observedStat, observedStat - 9.5);
+    const maxResult = Math.max(...simulationData, observedStat, observedStat + 9.5);
     const binSize = (maxResult - minResult) / (numBins - 1);
 
     const bins: Bin[] = Array.from({ length: numBins }, (_, i) => ({
@@ -70,7 +71,7 @@ export const PlotDisplay: React.FC = () => {
 
     const observedStatTrace: Data = {
       x: [observedStat, observedStat],
-      y: [0, maxCount],
+      y: [0, maxCount + 1],
       type: 'scatter',
       mode: 'lines',
       line: { color: theme === 'light' ? 'rgba(255, 0, 0, 0.7)' : 'rgba(255, 102, 102, 0.7)', width: 2 },
@@ -85,16 +86,16 @@ export const PlotDisplay: React.FC = () => {
       bins,
       maxCount
     };
-  }, []);
+  }, [isSimulating, simulationResults.length, selectedTestStatistic]);
 
   const simulationData = useMemo(() => 
     simulationResults.map(result => result.getTestStatistic(selectedTestStatistic)),
-    [simulationResults.length, selectedTestStatistic]
+    [isSimulating, simulationResults.length, selectedTestStatistic]
   );
 
   const { plotData, minResult, maxResult, binSize, bins, maxCount } = useMemo(() => 
     calculatePlotData(simulationData, observedStatistic || 0, theme),
-    [calculatePlotData, simulationData, observedStatistic, theme]
+    [calculatePlotData, simulationData, observedStatistic, theme, isSimulating, simulationResults.length]
   );
 
   const layout: Partial<Layout> = useMemo(() => ({
@@ -134,7 +135,7 @@ export const PlotDisplay: React.FC = () => {
         }
       });
     }
-  }, [bins]);
+  }, [isSimulating, simulationResults.length, bins]);
 
   useEffect(() => {
     const latestStatistic = simulationResults[simulationResults.length - 1]?.getTestStatistic(selectedTestStatistic);
@@ -150,11 +151,13 @@ export const PlotDisplay: React.FC = () => {
             latestStatisticBarRef.current = path as unknown as HTMLElement;
             path.style.fill = 'rgba(80, 150, 235, 0.8)';
             path.style.zIndex = '1000';
+          } else {
+            path.style.zIndex = '1000';
           }
         }
       });
     }
-  }, [simulationResults, selectedTestStatistic, bins, minResult, binSize, latestStatisticBarRef]);
+  }, [isSimulating, simulationResults.length, selectedTestStatistic, bins, minResult, binSize, latestStatisticBarRef]);
 
   return (
     <div className="flex flex-col h-full">
