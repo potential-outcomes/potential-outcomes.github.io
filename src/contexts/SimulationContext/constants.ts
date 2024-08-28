@@ -28,7 +28,7 @@ export const INITIAL_STATE: SimulationState = {
       removeColumn: () => ({ success: false, error: 'Not implemented' }),
     },
     settings: {
-      simulationSpeed: 50,
+      simulationSpeed: 40,
       selectedTestStatistic: ExperimentalTestStatistic.DifferenceInMeans,
       totalSimulations: 1000,
       pValueType: 'two-tailed' as PValueType,

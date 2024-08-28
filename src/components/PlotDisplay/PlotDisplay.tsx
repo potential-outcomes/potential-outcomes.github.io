@@ -149,8 +149,7 @@ export const PlotDisplay: React.FC = () => {
           if (index === binIndex) {
             latestStatisticBarRef.current = path as unknown as HTMLElement;
             path.style.fill = 'rgba(80, 150, 235, 0.8)';
-          } else {
-            path.style.fill = 'rgba(102, 187, 255, 1.0)';
+            path.style.zIndex = '1000';
           }
         }
       });
