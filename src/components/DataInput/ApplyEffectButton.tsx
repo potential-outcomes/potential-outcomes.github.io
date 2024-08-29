@@ -136,7 +136,6 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
             className={`p-1 ${wandColorClass} ${wandHoverClass} ${isWandActive ? '' : 'focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary'} rounded transition-colors duration-200 ${
               disabled ? 'opacity-50 cursor-not-allowed' : ''
             }`}
-            disabled={disabled}
           >
             <Icons.MagicWand size={4} />
           </div>
