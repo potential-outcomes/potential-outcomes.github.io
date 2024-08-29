@@ -119,7 +119,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
 
   return (
     <div className="relative inline mx-0">
-      <Tooltip content={!isWandActive ? `Fill empty cells based on constant effect` : ''}>
+      <Tooltip content={!isWandActive ? `Fill cells based on constant effect` : ''}>
         <button 
           className={`inline-flex items-center transition-all duration-200 ease-in-out rounded-md ${
             isWandActive ? 'bg-yellow-200/90 hover:opacity-90' : ''
