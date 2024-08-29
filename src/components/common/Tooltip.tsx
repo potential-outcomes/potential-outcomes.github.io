@@ -21,10 +21,6 @@ export function Tooltip({
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
 
-  if (content === '') {
-    return <>{children}</>;
-  }
-
   const showTooltip = () => {
     setIsVisible(true);
   };
@@ -61,12 +57,12 @@ export function Tooltip({
 
   return (
     <div
-      className={`relative inline ${className}`}
+      className={`${content !== '' ? 'relative inline' : 'flex items-center'} mx-0 ${className}`}
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
     >
-      {children}
-      {isVisible && (
+      <div className="flex items-center">{children}</div>
+      {content !== '' && isVisible && (
         <div
           className={`absolute z-10 px-3 py-2 text-sm rounded-md bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary whitespace-nowrap ${getPositionClasses()}`}
         >

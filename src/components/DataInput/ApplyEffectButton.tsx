@@ -18,9 +18,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
   const popupRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isWandActive, setIsWandActive] = useState(false);
-  const prevWandStateRef = useRef(false);
 
-  // Initialize effect sizes with '0' for all non-baseline columns
   useEffect(() => {
     const initialEffectSizes: { [key: number]: string } = {};
     userData.columns.forEach((_, index) => {
@@ -31,25 +29,13 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
     setEffectSizes(initialEffectSizes);
   }, [userData.columns, baselineColumn]);
 
-  const checkWandCondition = (rows: typeof userData.rows): boolean => {
-    return rows.some(row => {
+  useEffect(() => {
+    const newWandState = userData.rows.some(row => {
       if (row.assignment === null) return false;
       const nonNullCount = row.data.filter(cell => cell !== null).length;
       return nonNullCount === 1;
     });
-  };
-
-  useEffect(() => {
-    const newWandState = checkWandCondition(userData.rows);
     setIsWandActive(newWandState);
-
-    if (newWandState && !prevWandStateRef.current) {
-      // Flash effect
-      setIsWandActive(false);
-      setTimeout(() => setIsWandActive(true), 100);
-    }
-
-    prevWandStateRef.current = newWandState;
   }, [userData.rows]);
 
   useEffect(() => {
@@ -93,7 +79,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
         if (row.assignment === null) return row;
 
         const knownColumnIndex = row.data.findIndex(value => value !== null);
-        if (knownColumnIndex === -1) return row; // No known values in this row
+        if (knownColumnIndex === -1) return row;
 
         const newData = [...row.data];
         const knownValue = newData[knownColumnIndex] as number;
@@ -128,19 +114,40 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
     });
   };
 
-  const wandColorClass = isWandActive ? 'text-yellow-400' : 'text-light-text-secondary dark:text-dark-text-secondary';
-  const wandHoverClass = isWandActive ? 'hover:text-yellow-500' : 'hover:text-light-primary dark:hover:text-dark-primary';
+  const wandColorClass = isWandActive ? 'text-yellow-700' : 'text-light-text-secondary dark:text-dark-text-secondary';
+  const wandHoverClass = isWandActive ? 'hover:text-yellow-700' : 'hover:text-light-primary dark:hover:text-dark-primary';
 
   return (
-    <div className="relative">
-      <Tooltip content="Apply constant effect to unobserved">
-        <button
+    <div className="relative inline mx-0">
+      <Tooltip content={!isWandActive ? `Fill empty cells based on constant effect` : ''}>
+        <button 
+          className={`inline-flex items-center transition-all duration-200 ease-in-out rounded-md ${
+            isWandActive ? 'bg-yellow-200/90 hover:opacity-90' : ''
+          }`}
+          onClick={() => {
+            if (!disabled) {
+              setShowEffectPopup(prev => !prev);
+            }
+          }}
           ref={buttonRef}
-          onClick={() => !disabled && setShowEffectPopup(!showEffectPopup)}
-          className={`p-1 ${wandColorClass} ${wandHoverClass} focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={disabled}
+          style={{ width: isWandActive ? 'auto' : '32px' }}
         >
-          <Icons.MagicWand size={4} />
+          <div
+            className={`p-1 ${wandColorClass} ${wandHoverClass} ${isWandActive ? '' : 'focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary'} rounded transition-colors duration-200 ${
+              disabled ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={disabled}
+          >
+            <Icons.MagicWand size={4} />
+          </div>
+
+          {isWandActive && (
+            <div
+              className="whitespace-nowrap text-xs px-2 text-yellow-800 transition-colors duration-200 focus:outline-none"
+            >
+              Fill based on constant effect
+            </div>
+          )}
         </button>
       </Tooltip>
 

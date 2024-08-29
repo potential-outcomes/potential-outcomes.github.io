@@ -299,8 +299,8 @@ export default function DataInput() {
     setShowBlocks(!showBlocks);
   };
 
-  const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay]);
-  const columnStandardDeviations = useMemo(() => calculateColumnStandardDeviations(dataToDisplay), [dataToDisplay]);
+  const columnAverages = useMemo(() => calculateColumnAverages(dataToDisplay), [dataToDisplay, simulationResults.length]);
+  const columnStandardDeviations = useMemo(() => calculateColumnStandardDeviations(dataToDisplay), [dataToDisplay, simulationResults.length]);
 
   const renderRows = useMemo(() => {
     const shouldIgnoreCollapse = dataToDisplay.length <= 5;

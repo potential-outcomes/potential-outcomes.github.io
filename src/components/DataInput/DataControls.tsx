@@ -28,7 +28,7 @@ const DataControls: React.FC<DataControlsProps> = ({ toggleBlocking, isBlockingE
   `;
 
   return (
-    <div className="flex justify-between items-center w-full">
+    <div className="flex justify-between items-center w-full m-1">
       <div className="flex items-center space-x-2">
         <ApplyEffectButton disabled={disabled} />
         <Tooltip content={isBlockingEnabled ? "Disable blocking" : "Enable blocking"}>

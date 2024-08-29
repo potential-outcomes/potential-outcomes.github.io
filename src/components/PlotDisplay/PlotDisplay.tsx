@@ -9,7 +9,6 @@ import {
   useSimulationResults,
   useLatestStatisticBarRef,
   testStatistics,
-  SimulationResult,
 } from '@/contexts/SimulationContext';
 
 const Plot = dynamic<PlotParams>(() => import('react-plotly.js'), { ssr: false });
