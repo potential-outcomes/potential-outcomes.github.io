@@ -167,7 +167,7 @@ export const PlotDisplay: React.FC = () => {
               data={plotData}
               layout={layout}
               config={{ responsive: true, autosizable: true }}
-              style={{ width, height: height - 38 }}
+              style={{ width, height: height * 0.85 }}
               onAfterPlot={addBinRangeAttributes}
               onUpdate={addBinRangeAttributes}
             />

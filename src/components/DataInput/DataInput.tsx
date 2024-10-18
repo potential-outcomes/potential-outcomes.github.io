@@ -344,9 +344,9 @@ export default function DataInput() {
   }, [dataToDisplay, isCollapsed, isSimulating, showBlocks, userData.columns, addRow, deleteRow, setAssignment, setBlock, updateCell, collectionPoint, triggerPhantom]);
 
   return (
-    <>
+    <div className="h-full">
       <DataControls toggleBlocking={toggleBlockingColumn} isBlockingEnabled={showBlocks} disabled={isSimulating}/>
-      <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
+      <div className="w-full max-w-4xl mx-auto flex flex-col h-[90%]">
         <motion.div 
           className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${isSimulating ? 'border-2 border-light-secondary dark:border-dark-secondary' : 'border-1 border-slate-700/20'}`}
           animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
@@ -425,6 +425,6 @@ export default function DataInput() {
           </div>
         </motion.div>
       </div>
-    </>
+    </div>
   );
 }
