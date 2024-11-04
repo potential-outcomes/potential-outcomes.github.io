@@ -97,7 +97,6 @@ export const Overlay: React.FC<OverlayProps> = ({
   rowIndex,
   columnColors
 }) => {
-  console.log('duration', duration);
   const x = useMotionValue('0');
   const [leftShadow, rightShadow] = useBoxShadow(x);
 

@@ -142,7 +142,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 collectionPoint={collectionPoint}
                 isSimulating={isSimulating}
                 triggerPhantom={row.assignment === cellIndex && triggerPhantom}
-                phantomDuration={duration * 1.1}
+                phantomDuration={duration}
                 rowIndex={index}
               />
             ))
