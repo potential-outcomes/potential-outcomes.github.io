@@ -42,7 +42,7 @@ const DataControls: React.FC<DataControlsProps> = ({ toggleBlocking, isBlockingE
         </Tooltip>
       </div>
       <div className="flex justify-end items-center space-x-1">
-        <input
+        {/* <input
           type="file"
           accept=".csv"
           // onChange={handleFileUpload}
@@ -58,7 +58,7 @@ const DataControls: React.FC<DataControlsProps> = ({ toggleBlocking, isBlockingE
           >
             <Icons.Upload size={4} />
           </button>
-        </Tooltip>
+        </Tooltip> */}
 
         <Tooltip content="Undo (Cmd+Z / Ctrl+Z)">
           <button
