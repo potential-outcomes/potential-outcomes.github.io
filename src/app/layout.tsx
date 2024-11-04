@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const links = [
-    { href: '/', label: 'Simulation Tool' },
+    { href: '/app', label: 'Simulation Tool' },
     // { href: '/explainer', label: 'Explainer' },
     { href: '/about', label: 'About' },
   ];
