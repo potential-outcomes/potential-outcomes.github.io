@@ -103,7 +103,7 @@ export const SimulationControls: React.FC = () => {
   }, [userData.columns.length, selectedTestStatistic, setSelectedTestStatistic]);
 
   const handleSimulationAction = async () => {
-    if (simulationResults && simulationResults.length == totalSimulations) {
+    if (simulationResults && simulationResults.length >= totalSimulations) {
         clearSimulationData();
     }
     const result = isSimulating ? pauseSimulation() : startSimulation();

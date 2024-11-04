@@ -142,7 +142,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 collectionPoint={collectionPoint}
                 isSimulating={isSimulating}
                 triggerPhantom={row.assignment === cellIndex && triggerPhantom}
-                phantomDuration={duration}
+                phantomDuration={duration * 1.1}
                 rowIndex={index}
               />
             ))
@@ -232,7 +232,7 @@ export default function DataInput() {
     }
   }, [isSimulating, simulationResults, userData.rows]);
 
-  const duration = Math.min((speedToDuration(simulationSpeed)/900), 0.5);
+  const duration = Math.min((speedToDuration(simulationSpeed)/850), 0.5);
 
   useEffect(() => {
     if (isSimulating && simulationResults) {
