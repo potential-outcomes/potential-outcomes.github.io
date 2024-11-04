@@ -6,9 +6,9 @@ const __dirname = dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: "/potential-outcomes",
+  basePath: "/app",
   images: {
-    unoptimized: true,  // This is important when using basePath
+    unoptimized: true, // This is important when using basePath
     // Add this if you want to disable the warning about unoptimized images
     disableStaticImages: true,
   },

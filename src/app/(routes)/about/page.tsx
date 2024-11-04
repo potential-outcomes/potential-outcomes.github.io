@@ -7,14 +7,14 @@ const AboutPage = () => {
     {
       name: "Ignacio Fernandez",
       url: "https://www.linkedin.com/in/ignacio-fernandez-h/",
-      image: "/potential-outcomes/images/ignacio_fernandez.jpeg",
+      image: "images/ignacio_fernandez.jpeg",
       description: `Ignacio Fernandez is a junior studying Computer Science at Stanford University on the Artificial Intelligence track. His technical experience spans robotics and full-stack development projects. Outside of his coursework, he explores interests in linguistics and is currently learning Turkish.`,
       role: "Student Researcher",
     },
     {
       name: "Dennis Sun",
       url: "https://dlsun.github.io/",
-      image: "/potential-outcomes/images/dennis_sun.jpg",
+      image: "images/dennis_sun.jpg",
       description: `Dennis Sun is the Director of the Program in Data Science at Stanford, overseeing the Data Science B.S., Data Science & Social Systems B.A., and Data Science minor programs. His research focuses on making statistics and data science more accessible through improved teaching methods and software tools. Outside of school, he enjoys trivia, hiking, and classical music.`,
       role: "Faculty Mentor",
     },
