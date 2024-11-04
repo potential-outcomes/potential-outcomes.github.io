@@ -88,7 +88,8 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({ chil
   }, []);
 
   const dynamicDelay = useCallback((): Promise<void> => {
-    const adjustedDelay = speedToDuration(simulationSpeedRef.current);
+    const speed = simulationSpeedRef.current == 100 ? 1000 : simulationSpeedRef.current;
+    const adjustedDelay = speedToDuration(speed);
     return new Promise((resolve, reject) => {
       timeoutIdRef.current = window.setTimeout(() => {
         timeoutIdRef.current = null;

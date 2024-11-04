@@ -16,14 +16,14 @@ const SimulationPage: React.FC = () => {
               <SimulationControls />
             </Card>
           </div>
-          <Card className="w-full lg:w-2/3 flex flex-col">
-            <div className="flex-shrink-0 max-h-[50%]">
+          <div className="w-full lg:w-2/3 flex flex-col">
+            <Card className="flex-shrink-0 max-h-[50%]">
               <DataInput />
-            </div>
-            <div className="flex-grow mt-4 min-h-[300px] max-h-[500px]">
+            </Card>
+            <Card className="flex-grow mt-4 min-h-[300px] max-h-[500px]">
               <PlotDisplay />
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
     </SimulationProvider>
