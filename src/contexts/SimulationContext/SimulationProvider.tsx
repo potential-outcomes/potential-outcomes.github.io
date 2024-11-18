@@ -299,7 +299,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   );
 
   const parseCSVData = (data: string): UserDataState => {
-    // Step 1: Split the data into lines
+    // Step 1: Split into lines
     const lines = data
       .trim()
       .split("\n")
@@ -310,44 +310,107 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       throw new Error("No data found.");
     }
 
-    // Step 2: Determine if there's a header row (skip if present)
+    // Step 2: Detect delimiter
+    const delimiter = lines[0].includes("\t") ? "\t" : ",";
+
+    // Step 3: Split into columns and remove header if present
     let startIndex = 0;
-    if (lines[0].split(/\s+/).every((item) => isNaN(parseFloat(item)))) {
+    const firstLineTokens = lines[0].split(delimiter);
+    if (
+      firstLineTokens.every(
+        (item) => item.trim().length > 0 && isNaN(parseFloat(item))
+      )
+    ) {
       startIndex = 1;
     }
 
-    // Step 3: Parse each line to extract values and assignments
-    const parsedLines = lines.slice(startIndex).map((line) => {
-      // Modified regex to capture optional value and required assignment
-      const parts = line.match(/(\d+(?:\.\d+)?)?(\s*\S+)/g);
-      if (!parts) {
+    // Step 4: Parse all lines into columns
+    const rawColumns: string[][] = Array(2)
+      .fill(null)
+      .map(() => []);
+    lines.slice(startIndex).forEach((line) => {
+      const tokens = line.split(delimiter).map((t) => t.trim());
+      if (tokens.length !== 2) {
         throw new Error(`Invalid line format: ${line}`);
       }
-      return parts.map((part) => {
-        const [, valueStr, assignment] =
-          part.match(/^(\d+(?:\.\d+)?)?(\s*\S+)$/) || [];
-        const value = valueStr ? parseFloat(valueStr) : null;
-        return { value, assignment: assignment.trim() };
-      });
+      rawColumns[0].push(tokens[0]);
+      rawColumns[1].push(tokens[1]);
     });
 
-    // Step 4: Create columns based on unique assignments
+    // Step 5: Analyze columns to determine which is assignment and which is value
+    const columnAnalysis = rawColumns.map((column, idx) => {
+      const parsedValues = column.map((val) => {
+        const num = parseFloat(val);
+        return {
+          original: val,
+          isNumeric: !isNaN(num),
+          value: !isNaN(num) ? num : val,
+        };
+      });
+
+      return {
+        index: idx,
+        allNumeric: parsedValues.every((v) => v.isNumeric),
+        uniqueValues: new Set(parsedValues.map((v) => v.value)).size,
+        parsedValues,
+      };
+    });
+
+    // Step 6: Determine which column is assignments
+    let assignmentColumnIndex: number;
+    let valueColumnIndex: number;
+
+    if (!columnAnalysis[0].allNumeric) {
+      assignmentColumnIndex = 0;
+      valueColumnIndex = 1;
+    } else if (!columnAnalysis[1].allNumeric) {
+      assignmentColumnIndex = 1;
+      valueColumnIndex = 0;
+    } else {
+      // Both columns are numeric - use the one with smaller domain as assignments
+      assignmentColumnIndex =
+        columnAnalysis[0].uniqueValues <= columnAnalysis[1].uniqueValues
+          ? 0
+          : 1;
+      valueColumnIndex = 1 - assignmentColumnIndex;
+    }
+
+    // Step 7: Create parsed data structure
+    const parsedLines = lines.slice(startIndex).map((line) => {
+      const tokens = line.split(delimiter).map((t) => t.trim());
+      const assignment = tokens[assignmentColumnIndex];
+      const valueStr = tokens[valueColumnIndex];
+      const value = parseFloat(valueStr);
+
+      if (isNaN(value)) {
+        throw new Error(`Invalid numeric value: ${valueStr}`);
+      }
+
+      return [
+        {
+          value,
+          assignment: assignment,
+        },
+      ];
+    });
+
+    // Step 8: Create columns based on unique assignments
     const uniqueAssignments = Array.from(
       new Set(parsedLines.flat().map((item) => item.assignment))
     );
     const defaultColors = DEFAULT_COLUMN_COLORS;
     const columns = uniqueAssignments.map((assignment, index) => ({
-      name: assignment || `Column ${index + 1}`,
+      name: assignment.toString(), // Convert to string in case it's numeric
       color: defaultColors[index % defaultColors.length],
     }));
 
-    // Step 5: Create rows with the parsed data
+    // Step 9: Create rows with the parsed data
     const rows: DataRow[] = parsedLines.map((line) => {
       const data = Array(columns.length).fill(null);
       let assignment: number | null = null;
       line.forEach((item) => {
         const columnIndex = columns.findIndex(
-          (col) => col.name === item.assignment
+          (col) => col.name === item.assignment.toString()
         );
         if (columnIndex !== -1) {
           data[columnIndex] = item.value;
@@ -359,7 +422,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       return { data, assignment, block: null };
     });
 
-    // Step 6: Ensure data consistency and handle edge cases
+    // Step 10: Validation
     if (rows.length === 0) {
       throw new Error("No valid data rows found.");
     }
@@ -367,14 +430,13 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       throw new Error("At least one column is required.");
     }
 
-    // Add an empty row at the end for new data entry
+    // Add empty row for new entries
     rows.push({
       data: Array(columns.length).fill(null),
       assignment: null,
       block: null,
     });
 
-    // Step 7: Create the UserDataState object
     return {
       rows,
       columns,
