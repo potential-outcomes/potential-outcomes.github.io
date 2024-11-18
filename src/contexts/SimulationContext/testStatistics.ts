@@ -256,7 +256,7 @@ export const testStatistics: Record<
     name: "Wilcoxon Rank-Sum",
     function: wilcoxonRankSum,
     supportsMultipleTreatments: false,
-    alwaysPositive: false,
+    alwaysPositive: true,
   },
   [ExperimentalTestStatistic.DifferenceInMedians]: {
     name: "Difference in Medians",
