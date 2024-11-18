@@ -1,15 +1,15 @@
 // potential-outcomes/src/lib/testStatistics.ts
 
-import { DataRow } from '@/types/types';
-import { sum, mean, median, variance } from 'mathjs';
+import { DataRow } from "@/types/types";
+import { sum, mean, median, variance, re } from "mathjs";
 
 export enum ExperimentalTestStatistic {
-  DifferenceInMeans = 'differenceInMeans',
-  WilcoxonRankSum = 'wilcoxonRankSum',
-  DifferenceInMedians = 'differenceInMedians',
-  RatioOfVariances = 'ratioOfVariances',
-  FStatistic = 'fStatistic',
-  BetweenGroupVariance = 'betweenGroupVariance'
+  DifferenceInMeans = "differenceInMeans",
+  WilcoxonRankSum = "wilcoxonRankSum",
+  DifferenceInMedians = "differenceInMedians",
+  RatioOfVariances = "ratioOfVariances",
+  FStatistic = "fStatistic",
+  BetweenGroupVariance = "betweenGroupVariance",
 }
 
 export interface TestStatisticMeta {
@@ -47,7 +47,7 @@ const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
   for (const row of data) {
     if (row.assignment !== null) {
       const value = row.data[row.assignment];
-      if (typeof value === 'number') {
+      if (typeof value === "number") {
         if (!groups[row.assignment]) groups[row.assignment] = [];
         groups[row.assignment].push(value);
       }
@@ -71,7 +71,7 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
     const value = row.data[0];
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       if (!acc[row.assignment]) acc[row.assignment] = [];
       acc[row.assignment].push(value);
     }
@@ -80,7 +80,8 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
 
   const groupKeys = Object.keys(groups);
   if (groupKeys.length !== 2) {
-    throw new Error("Wilcoxon Rank-Sum test requires exactly two groups");
+    return 0;
+    // throw new Error("Wilcoxon Rank-Sum test requires exactly two groups");
   }
 
   // Check if either group is empty
@@ -108,7 +109,7 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
   tiedRanks.forEach((values, rank) => {
     if (values.length > 1) {
       const averageRank = (rank + rank + values.length - 1) / 2;
-      values.forEach(value => ranks.set(value, averageRank));
+      values.forEach((value) => ranks.set(value, averageRank));
     }
   });
 
@@ -123,14 +124,14 @@ const differenceInMedians: TestStatisticFunction = (data: DataRow[]) => {
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
     const value = row.data[row.assignment];
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       if (!acc[row.assignment]) acc[row.assignment] = [];
       acc[row.assignment].push(value);
     }
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMedians = Object.values(groups).map(group => safeMedian(group));
+  const groupMedians = Object.values(groups).map((group) => safeMedian(group));
 
   return groupMedians.length >= 2 ? groupMedians[1] - groupMedians[0] : 0;
 };
@@ -141,14 +142,16 @@ const ratioOfVariances: TestStatisticFunction = (data: DataRow[]) => {
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
     const value = row.data[row.assignment];
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       if (!acc[row.assignment]) acc[row.assignment] = [];
       acc[row.assignment].push(value);
     }
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupVariances = Object.values(groups).map(group => safeVariance(group));
+  const groupVariances = Object.values(groups).map((group) =>
+    safeVariance(group)
+  );
 
   if (groupVariances.length < 2 || groupVariances[0] === 0) {
     return 1;
@@ -163,7 +166,7 @@ const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
   const groups = data.reduce((acc, row) => {
     if (row.assignment !== null) {
       const value = row.data[row.assignment];
-      if (typeof value === 'number') {
+      if (typeof value === "number") {
         if (!acc[row.assignment]) acc[row.assignment] = [];
         acc[row.assignment].push(value);
       }
@@ -171,12 +174,12 @@ const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMeans = Object.values(groups).map(group => safeMean(group));
-  const groupSizes = Object.values(groups).map(group => group.length);
-  
-  const allValidValues = data.flatMap(row => 
-    row.assignment !== null && typeof row.data[row.assignment] === 'number' 
-      ? [row.data[row.assignment] as number] 
+  const groupMeans = Object.values(groups).map((group) => safeMean(group));
+  const groupSizes = Object.values(groups).map((group) => group.length);
+
+  const allValidValues = data.flatMap((row) =>
+    row.assignment !== null && typeof row.data[row.assignment] === "number"
+      ? [row.data[row.assignment] as number]
       : []
   );
 
@@ -189,17 +192,23 @@ const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
 
   if (k <= 1 || n <= k) return 0; // Not enough groups or observations
 
-  const SSR = groupMeans.reduce((sum, groupMean, i) => 
-    sum + groupSizes[i] * Math.pow(groupMean - overallMean, 2), 0
+  const SSR = groupMeans.reduce(
+    (sum, groupMean, i) =>
+      sum + groupSizes[i] * Math.pow(groupMean - overallMean, 2),
+    0
   );
 
-  const SSE = Object.values(groups).reduce((sum, group, i) => 
-    sum + group.reduce((groupSum, value) => 
-      groupSum + Math.pow(value - groupMeans[i], 2), 0
-    ), 0
+  const SSE = Object.values(groups).reduce(
+    (sum, group, i) =>
+      sum +
+      group.reduce(
+        (groupSum, value) => groupSum + Math.pow(value - groupMeans[i], 2),
+        0
+      ),
+    0
   );
 
-  const F = (SSR / (k - 1)) / (SSE / (n - k));
+  const F = SSR / (k - 1) / (SSE / (n - k));
 
   return F;
 };
@@ -210,7 +219,7 @@ const betweenGroupVariance: TestStatisticFunction = (data: DataRow[]) => {
   const groups = data.reduce((acc, row) => {
     if (row.assignment !== null) {
       const value = row.data[row.assignment];
-      if (typeof value === 'number') {
+      if (typeof value === "number") {
         if (!acc[row.assignment]) acc[row.assignment] = [];
         acc[row.assignment].push(value);
       }
@@ -218,20 +227,25 @@ const betweenGroupVariance: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMeans = Object.values(groups).map(group => safeMean(group));
-  const groupSizes = Object.values(groups).map(group => group.length);
+  const groupMeans = Object.values(groups).map((group) => safeMean(group));
+  const groupSizes = Object.values(groups).map((group) => group.length);
   const allValues = Object.values(groups).flat();
   const overallMean = safeMean(allValues);
 
-  const betweenGroupSS = groupMeans.reduce((sum, groupMean, index) => 
-    sum + groupSizes[index] * Math.pow(groupMean - overallMean, 2), 0
+  const betweenGroupSS = groupMeans.reduce(
+    (sum, groupMean, index) =>
+      sum + groupSizes[index] * Math.pow(groupMean - overallMean, 2),
+    0
   );
 
   const totalGroups = Object.keys(groups).length;
   return totalGroups > 1 ? betweenGroupSS / (totalGroups - 1) : 0;
 };
 
-export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta> = {
+export const testStatistics: Record<
+  ExperimentalTestStatistic,
+  TestStatisticMeta
+> = {
   [ExperimentalTestStatistic.DifferenceInMeans]: {
     name: "Difference in Means",
     function: differenceInMeans,
@@ -267,14 +281,14 @@ export const testStatistics: Record<ExperimentalTestStatistic, TestStatisticMeta
     function: betweenGroupVariance,
     supportsMultipleTreatments: true,
     alwaysPositive: true,
-  }
+  },
 };
 
-export { 
-  differenceInMeans, 
-  wilcoxonRankSum, 
-  differenceInMedians, 
-  ratioOfVariances, 
+export {
+  differenceInMeans,
+  wilcoxonRankSum,
+  differenceInMedians,
+  ratioOfVariances,
   fStatistic,
-  betweenGroupVariance
+  betweenGroupVariance,
 };
