@@ -260,8 +260,9 @@ export const PlotDisplay: React.FC = () => {
 
   const calculatePlotData = useCallback(
     (simulationData: number[], observedStat: number, theme: string) => {
-      const isPositiveOnly = testStatistics[selectedTestStatistic].alwaysPositive;
-  
+      const isPositiveOnly =
+        testStatistics[selectedTestStatistic].alwaysPositive;
+
       if (!simulationData?.length) {
         // Initialize empty plot with appropriate scale
         const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 10;
@@ -269,39 +270,48 @@ export const PlotDisplay: React.FC = () => {
         const dummyMin = isPositiveOnly ? 0 : -defaultRange;
         const dummyMax = defaultRange;
         const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
-  
+
         const dummyBins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
           start: dummyMin + i * binSize,
           end: dummyMin + (i + 1) * binSize,
           count: 0,
         }));
-  
+
         const histogramTrace: Data = {
           x: dummyBins.map((bin) => (bin.start + bin.end) / 2),
           y: dummyBins.map((bin) => bin.count),
           type: "bar",
           marker: {
-            color: theme === "light" ? "rgba(66, 135, 245, 0.6)" : "rgba(102, 187, 255, 0.6)",
+            color:
+              theme === "light"
+                ? "rgba(66, 135, 245, 0.6)"
+                : "rgba(102, 187, 255, 0.6)",
             line: {
-              color: theme === "light" ? "rgba(66, 135, 245, 1)" : "rgba(102, 187, 255, 1)",
+              color:
+                theme === "light"
+                  ? "rgba(66, 135, 245, 1)"
+                  : "rgba(102, 187, 255, 1)",
               width: 1,
             },
           },
           name: "Simulated Differences",
         };
-  
+
         const observedStatTrace: Data = {
           x: [observedStat, observedStat],
           y: [0, 1],
           type: "scatter",
           mode: "lines",
           line: {
-            color: theme === "light" ? "rgba(255, 0, 0, 0.7)" : "rgba(255, 102, 102, 0.7)",
+            color:
+              theme === "light"
+                ? "rgba(255, 0, 0, 0.7)"
+                : "rgba(255, 102, 102, 0.7)",
             width: 2,
           },
           name: "Observed Statistic",
         };
-  
+
         return {
           plotData: [histogramTrace, observedStatTrace],
           minResult: dummyMin,
@@ -311,50 +321,57 @@ export const PlotDisplay: React.FC = () => {
           maxCount: 0,
         };
       }
-  
+
       // Calculate parameters for non-empty data
       const dataMin = Math.min(...simulationData);
       const dataMax = Math.max(...simulationData);
       const hasSpread = dataMin !== dataMax;
-  
+
       // Calculate bin size based on data and observed statistic
-      let binSize = observedStat === 0 
-        ? 1 
-        : Math.abs(observedStat) / Math.ceil(
-            (isPositiveOnly ? 2 : 2.75) * Math.abs(observedStat) /
-            Math.max(Math.abs(dataMax), Math.abs(dataMin))
-          );
-  
+      let binSize =
+        observedStat === 0
+          ? 1
+          : Math.abs(observedStat) /
+            Math.ceil(
+              ((isPositiveOnly ? 3 : 3) * Math.abs(observedStat)) /
+                Math.max(Math.abs(dataMax), Math.abs(dataMin))
+            );
+
       // Determine range
       const effectiveMin = hasSpread ? dataMin : dataMin - binSize;
       const effectiveMax = hasSpread ? dataMax : dataMax + binSize;
-  
+
       // Calculate adjusted range
       let adjustedMin: number;
       let adjustedMax: number;
-  
+
       if (isPositiveOnly) {
         // For positive-only statistics, start from 0 and extend past the maximum
         adjustedMin = 0;
-        adjustedMax = Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+        adjustedMax =
+          Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
       } else {
         // For two-tailed statistics, ensure symmetry and bin alignment
-        adjustedMin = Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
-        adjustedMax = Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
-  
+        adjustedMin =
+          Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
+        adjustedMax =
+          Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+
         // Verify bin alignment for observed statistic
         if (process.env.NODE_ENV === "development") {
-          const positiveObsStatBin = Math.round(observedStat / binSize) * binSize;
-          const negativeObsStatBin = Math.round(-observedStat / binSize) * binSize;
+          const positiveObsStatBin =
+            Math.round(observedStat / binSize) * binSize;
+          const negativeObsStatBin =
+            Math.round(-observedStat / binSize) * binSize;
           console.assert(
             Math.abs(positiveObsStatBin - observedStat) < 1e-10 &&
-            Math.abs(negativeObsStatBin + observedStat) < 1e-10,
+              Math.abs(negativeObsStatBin + observedStat) < 1e-10,
             "Observed statistic values should fall on bin edges",
             { observedStat, binSize, positiveObsStatBin, negativeObsStatBin }
           );
         }
       }
-  
+
       // Create bins
       const totalBins = Math.ceil((adjustedMax - adjustedMin) / binSize);
       const bins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
@@ -362,7 +379,7 @@ export const PlotDisplay: React.FC = () => {
         end: adjustedMin + (i + 1) * binSize,
         count: 0,
       }));
-  
+
       // Count occurrences in bins
       simulationData.forEach((value) => {
         const binIndex = Math.min(
@@ -373,24 +390,30 @@ export const PlotDisplay: React.FC = () => {
           bins[binIndex].count++;
         }
       });
-  
+
       // Create histogram trace
       const histogramTrace: Data = {
         x: bins.map((bin) => (bin.start + bin.end) / 2),
         y: bins.map((bin) => bin.count),
         type: "bar",
         marker: {
-          color: theme === "light" ? "rgba(66, 135, 245, 0.6)" : "rgba(102, 187, 255, 0.6)",
+          color:
+            theme === "light"
+              ? "rgba(66, 135, 245, 0.6)"
+              : "rgba(102, 187, 255, 0.6)",
           line: {
-            color: theme === "light" ? "rgba(66, 135, 245, 1)" : "rgba(102, 187, 255, 1)",
+            color:
+              theme === "light"
+                ? "rgba(66, 135, 245, 1)"
+                : "rgba(102, 187, 255, 1)",
             width: 1,
           },
         },
         name: "Simulated Differences",
       };
-  
+
       const maxCount = Math.max(...bins.map((bin) => bin.count));
-  
+
       // Create observed statistic line
       const observedStatTrace: Data = {
         x: [observedStat, observedStat],
@@ -398,12 +421,15 @@ export const PlotDisplay: React.FC = () => {
         type: "scatter",
         mode: "lines",
         line: {
-          color: theme === "light" ? "rgba(255, 0, 0, 0.7)" : "rgba(255, 102, 102, 0.7)",
+          color:
+            theme === "light"
+              ? "rgba(255, 0, 0, 0.7)"
+              : "rgba(255, 102, 102, 0.7)",
           width: 2,
         },
         name: "Observed Statistic",
       };
-  
+
       return {
         plotData: [histogramTrace, observedStatTrace],
         minResult: adjustedMin,

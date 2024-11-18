@@ -10,6 +10,7 @@ export enum ExperimentalTestStatistic {
   RatioOfVariances = "ratioOfVariances",
   FStatistic = "fStatistic",
   BetweenGroupVariance = "betweenGroupVariance",
+  RatioOfMeans = "ratioOfMeans",
 }
 
 export interface TestStatisticMeta {
@@ -242,6 +243,28 @@ const betweenGroupVariance: TestStatisticFunction = (data: DataRow[]) => {
   return totalGroups > 1 ? betweenGroupSS / (totalGroups - 1) : 0;
 };
 
+const ratioOfMeans: TestStatisticFunction = (data: DataRow[]) => {
+  if (!data || data.length === 0) return 1; // Return 1 for equal means
+
+  const groups = data.reduce((acc, row) => {
+    if (row.assignment === null) return acc;
+    const value = row.data[row.assignment];
+    if (typeof value === "number") {
+      if (!acc[row.assignment]) acc[row.assignment] = [];
+      acc[row.assignment].push(value);
+    }
+    return acc;
+  }, {} as Record<number, number[]>);
+
+  const groupMeans = Object.values(groups).map((group) => safeMean(group));
+
+  if (groupMeans.length < 2 || groupMeans[0] === 0) {
+    return 1;
+  }
+
+  return groupMeans[1] / groupMeans[0];
+};
+
 export const testStatistics: Record<
   ExperimentalTestStatistic,
   TestStatisticMeta
@@ -282,6 +305,12 @@ export const testStatistics: Record<
     supportsMultipleTreatments: true,
     alwaysPositive: true,
   },
+  [ExperimentalTestStatistic.RatioOfMeans]: {
+    name: "Ratio of Means",
+    function: ratioOfMeans,
+    supportsMultipleTreatments: false,
+    alwaysPositive: true,
+  },
 };
 
 export {
@@ -291,4 +320,5 @@ export {
   ratioOfVariances,
   fStatistic,
   betweenGroupVariance,
+  ratioOfMeans,
 };
