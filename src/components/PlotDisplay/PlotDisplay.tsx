@@ -48,57 +48,260 @@ export const PlotDisplay: React.FC = () => {
   } = useSimulationState();
   const latestStatisticBarRef = useLatestStatisticBarRef();
 
+  // const calculatePlotData = useCallback(
+  //   (simulationData: number[], observedStat: number, theme: string) => {
+  //     if (!simulationData?.length) {
+  //       // Use observedStat to determine scale, or default if none
+  //       const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 10;
+  //       const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
+  //       const dummyMin = -defaultRange;
+  //       const dummyMax = defaultRange;
+  //       const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
+
+  //       const dummyBins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
+  //         start: dummyMin + i * binSize,
+  //         end: dummyMin + (i + 1) * binSize,
+  //         count: 0,
+  //       }));
+
+  //       const histogramTrace: Data = {
+  //         x: dummyBins.map((bin) => (bin.start + bin.end) / 2),
+  //         y: dummyBins.map((bin) => bin.count),
+  //         type: "bar",
+  //         marker: {
+  //           color:
+  //             theme === "light"
+  //               ? "rgba(66, 135, 245, 0.6)"
+  //               : "rgba(102, 187, 255, 0.6)",
+  //           line: {
+  //             color:
+  //               theme === "light"
+  //                 ? "rgba(66, 135, 245, 1)"
+  //                 : "rgba(102, 187, 255, 1)",
+  //             width: 1,
+  //           },
+  //         },
+  //         name: "Simulated Differences",
+  //       };
+
+  //       const observedStatTrace: Data = {
+  //         x: [observedStat, observedStat],
+  //         y: [0, 1], // Using 1 as max since we have no counts
+  //         type: "scatter",
+  //         mode: "lines",
+  //         line: {
+  //           color:
+  //             theme === "light"
+  //               ? "rgba(255, 0, 0, 0.7)"
+  //               : "rgba(255, 102, 102, 0.7)",
+  //           width: 2,
+  //         },
+  //         name: "Observed Statistic",
+  //       };
+
+  //       return {
+  //         plotData: [histogramTrace, observedStatTrace],
+  //         minResult: dummyMin,
+  //         maxResult: dummyMax,
+  //         binSize,
+  //         bins: dummyBins,
+  //         maxCount: 0,
+  //       };
+  //     }
+
+  //     // Get data range, handling case where all points are same value
+  //     const dataMin = Math.min(...simulationData);
+  //     const dataMax = Math.max(...simulationData);
+  //     const hasSpread = dataMin !== dataMax;
+
+  //     // Handle case where observedStat is 0
+  //     const binSize =
+  //       observedStat === 0
+  //         ? 1 // Use unit binSize if observedStat is 0
+  //         : Math.abs(observedStat) /
+  //           Math.ceil(
+  //             (2.75 * Math.abs(observedStat)) /
+  //               Math.max(Math.abs(dataMax), Math.abs(dataMin))
+  //           );
+
+  //     // If no spread in data, create artificial spread around the single value
+  //     const effectiveMin = hasSpread ? dataMin : dataMin - binSize;
+  //     const effectiveMax = hasSpread ? dataMax : dataMax + binSize;
+
+  //     // Step 3: Extend range to nearest bin edge, ensuring we include ±observedStat
+  //     const adjustedMin =
+  //       Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
+  //     const adjustedMax =
+  //       Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+
+  //     // Step 4: Calculate number of bins needed
+  //     const totalBins = Math.ceil((adjustedMax - adjustedMin) / binSize);
+
+  //     // Step 5: Create bins
+  //     const bins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
+  //       start: adjustedMin + i * binSize,
+  //       end: adjustedMin + (i + 1) * binSize,
+  //       count: 0,
+  //     }));
+
+  //     // Detailed bin edge checking
+  //     const binStarts = bins.map((bin) => bin.start);
+  //     const positiveDiffs = binStarts.map((start) =>
+  //       Math.abs(start - observedStat)
+  //     );
+  //     const negativeDiffs = binStarts.map((start) =>
+  //       Math.abs(start + observedStat)
+  //     );
+
+  //     const closestPositive = Math.min(...positiveDiffs);
+  //     const closestNegative = Math.min(...negativeDiffs);
+
+  //     console.log("Edge checking:", {
+  //       observedStat,
+  //       negativeObservedStat: -observedStat,
+  //       binStarts,
+  //       closestPositiveEdge: binStarts[positiveDiffs.indexOf(closestPositive)],
+  //       distanceToPositive: closestPositive,
+  //       closestNegativeEdge: binStarts[negativeDiffs.indexOf(closestNegative)],
+  //       distanceToNegative: closestNegative,
+  //     });
+
+  //     // Verify both +observedStat and -observedStat fall on bin edges
+  //     if (process.env.NODE_ENV === "development") {
+  //       const hasPositiveEdge = bins.some(
+  //         (bin) =>
+  //           Math.abs(bin.start - observedStat) < 1e-10 ||
+  //           Math.abs(bin.end - observedStat) < 1e-10
+  //       );
+  //       const hasNegativeEdge = bins.some(
+  //         (bin) =>
+  //           Math.abs(bin.start + observedStat) < 1e-10 ||
+  //           Math.abs(bin.end + observedStat) < 1e-10
+  //       );
+  //       console.assert(
+  //         hasPositiveEdge && hasNegativeEdge,
+  //         "Observed statistic values should fall on bin edges",
+  //         {
+  //           observedStat,
+  //           negativeObservedStat: -observedStat,
+  //           binSize,
+  //           binStarts,
+  //           closestPositiveEdge:
+  //             binStarts[positiveDiffs.indexOf(closestPositive)],
+  //           distanceToPositive: closestPositive,
+  //           closestNegativeEdge:
+  //             binStarts[negativeDiffs.indexOf(closestNegative)],
+  //           distanceToNegative: closestNegative,
+  //           adjustedMin,
+  //           adjustedMax,
+  //           totalBins,
+  //         }
+  //       );
+  //     }
+
+  //     simulationData.forEach((value) => {
+  //       const binIndex = Math.min(
+  //         Math.floor((value - adjustedMin) / binSize),
+  //         totalBins - 1
+  //       );
+  //       if (binIndex >= 0 && bins[binIndex]) {
+  //         bins[binIndex].count++;
+  //       }
+  //     });
+
+  //     const histogramTrace: Data = {
+  //       x: bins.map((bin) => (bin.start + bin.end) / 2),
+  //       y: bins.map((bin) => bin.count),
+  //       type: "bar",
+  //       marker: {
+  //         color:
+  //           theme === "light"
+  //             ? "rgba(66, 135, 245, 0.6)"
+  //             : "rgba(102, 187, 255, 0.6)",
+  //         line: {
+  //           color:
+  //             theme === "light"
+  //               ? "rgba(66, 135, 245, 1)"
+  //               : "rgba(102, 187, 255, 1)",
+  //           width: 1,
+  //         },
+  //       },
+  //       name: "Simulated Differences",
+  //     };
+
+  //     const maxCount = Math.max(...bins.map((bin) => bin.count));
+
+  //     const observedStatTrace: Data = {
+  //       x: [observedStat, observedStat],
+  //       y: [0, maxCount + 1],
+  //       type: "scatter",
+  //       mode: "lines",
+  //       line: {
+  //         color:
+  //           theme === "light"
+  //             ? "rgba(255, 0, 0, 0.7)"
+  //             : "rgba(255, 102, 102, 0.7)",
+  //         width: 2,
+  //       },
+  //       name: "Observed Statistic",
+  //     };
+
+  //     return {
+  //       plotData: [histogramTrace, observedStatTrace],
+  //       minResult: adjustedMin,
+  //       maxResult: adjustedMax,
+  //       binSize,
+  //       bins,
+  //       maxCount,
+  //     };
+  //   },
+  //   [isSimulating, simulationResults.length, selectedTestStatistic]
+  // );
+
   const calculatePlotData = useCallback(
     (simulationData: number[], observedStat: number, theme: string) => {
+      const isPositiveOnly = testStatistics[selectedTestStatistic].alwaysPositive;
+  
       if (!simulationData?.length) {
-        // Use observedStat to determine scale, or default if none
+        // Initialize empty plot with appropriate scale
         const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 10;
         const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
-        const dummyMin = -defaultRange;
+        const dummyMin = isPositiveOnly ? 0 : -defaultRange;
         const dummyMax = defaultRange;
         const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
-
+  
         const dummyBins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
           start: dummyMin + i * binSize,
           end: dummyMin + (i + 1) * binSize,
           count: 0,
         }));
-
+  
         const histogramTrace: Data = {
           x: dummyBins.map((bin) => (bin.start + bin.end) / 2),
           y: dummyBins.map((bin) => bin.count),
           type: "bar",
           marker: {
-            color:
-              theme === "light"
-                ? "rgba(66, 135, 245, 0.6)"
-                : "rgba(102, 187, 255, 0.6)",
+            color: theme === "light" ? "rgba(66, 135, 245, 0.6)" : "rgba(102, 187, 255, 0.6)",
             line: {
-              color:
-                theme === "light"
-                  ? "rgba(66, 135, 245, 1)"
-                  : "rgba(102, 187, 255, 1)",
+              color: theme === "light" ? "rgba(66, 135, 245, 1)" : "rgba(102, 187, 255, 1)",
               width: 1,
             },
           },
           name: "Simulated Differences",
         };
-
+  
         const observedStatTrace: Data = {
           x: [observedStat, observedStat],
-          y: [0, 1], // Using 1 as max since we have no counts
+          y: [0, 1],
           type: "scatter",
           mode: "lines",
           line: {
-            color:
-              theme === "light"
-                ? "rgba(255, 0, 0, 0.7)"
-                : "rgba(255, 102, 102, 0.7)",
+            color: theme === "light" ? "rgba(255, 0, 0, 0.7)" : "rgba(255, 102, 102, 0.7)",
             width: 2,
           },
           name: "Observed Statistic",
         };
-
+  
         return {
           plotData: [histogramTrace, observedStatTrace],
           minResult: dummyMin,
@@ -108,98 +311,59 @@ export const PlotDisplay: React.FC = () => {
           maxCount: 0,
         };
       }
-
-      // Get data range, handling case where all points are same value
+  
+      // Calculate parameters for non-empty data
       const dataMin = Math.min(...simulationData);
       const dataMax = Math.max(...simulationData);
       const hasSpread = dataMin !== dataMax;
-
-      // Handle case where observedStat is 0
-      const binSize =
-        observedStat === 0
-          ? 1 // Use unit binSize if observedStat is 0
-          : Math.abs(observedStat) /
-            Math.ceil(
-              (2.75 * Math.abs(observedStat)) /
-                Math.max(Math.abs(dataMax), Math.abs(dataMin))
-            );
-
-      // If no spread in data, create artificial spread around the single value
+  
+      // Calculate bin size based on data and observed statistic
+      let binSize = observedStat === 0 
+        ? 1 
+        : Math.abs(observedStat) / Math.ceil(
+            (isPositiveOnly ? 2 : 2.75) * Math.abs(observedStat) /
+            Math.max(Math.abs(dataMax), Math.abs(dataMin))
+          );
+  
+      // Determine range
       const effectiveMin = hasSpread ? dataMin : dataMin - binSize;
       const effectiveMax = hasSpread ? dataMax : dataMax + binSize;
-
-      // Step 3: Extend range to nearest bin edge, ensuring we include ±observedStat
-      const adjustedMin =
-        Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
-      const adjustedMax =
-        Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
-
-      // Step 4: Calculate number of bins needed
+  
+      // Calculate adjusted range
+      let adjustedMin: number;
+      let adjustedMax: number;
+  
+      if (isPositiveOnly) {
+        // For positive-only statistics, start from 0 and extend past the maximum
+        adjustedMin = 0;
+        adjustedMax = Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+      } else {
+        // For two-tailed statistics, ensure symmetry and bin alignment
+        adjustedMin = Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
+        adjustedMax = Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+  
+        // Verify bin alignment for observed statistic
+        if (process.env.NODE_ENV === "development") {
+          const positiveObsStatBin = Math.round(observedStat / binSize) * binSize;
+          const negativeObsStatBin = Math.round(-observedStat / binSize) * binSize;
+          console.assert(
+            Math.abs(positiveObsStatBin - observedStat) < 1e-10 &&
+            Math.abs(negativeObsStatBin + observedStat) < 1e-10,
+            "Observed statistic values should fall on bin edges",
+            { observedStat, binSize, positiveObsStatBin, negativeObsStatBin }
+          );
+        }
+      }
+  
+      // Create bins
       const totalBins = Math.ceil((adjustedMax - adjustedMin) / binSize);
-
-      // Step 5: Create bins
       const bins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
         start: adjustedMin + i * binSize,
         end: adjustedMin + (i + 1) * binSize,
         count: 0,
       }));
-
-      // Detailed bin edge checking
-      const binStarts = bins.map((bin) => bin.start);
-      const positiveDiffs = binStarts.map((start) =>
-        Math.abs(start - observedStat)
-      );
-      const negativeDiffs = binStarts.map((start) =>
-        Math.abs(start + observedStat)
-      );
-
-      const closestPositive = Math.min(...positiveDiffs);
-      const closestNegative = Math.min(...negativeDiffs);
-
-      console.log("Edge checking:", {
-        observedStat,
-        negativeObservedStat: -observedStat,
-        binStarts,
-        closestPositiveEdge: binStarts[positiveDiffs.indexOf(closestPositive)],
-        distanceToPositive: closestPositive,
-        closestNegativeEdge: binStarts[negativeDiffs.indexOf(closestNegative)],
-        distanceToNegative: closestNegative,
-      });
-
-      // Verify both +observedStat and -observedStat fall on bin edges
-      if (process.env.NODE_ENV === "development") {
-        const hasPositiveEdge = bins.some(
-          (bin) =>
-            Math.abs(bin.start - observedStat) < 1e-10 ||
-            Math.abs(bin.end - observedStat) < 1e-10
-        );
-        const hasNegativeEdge = bins.some(
-          (bin) =>
-            Math.abs(bin.start + observedStat) < 1e-10 ||
-            Math.abs(bin.end + observedStat) < 1e-10
-        );
-        console.assert(
-          hasPositiveEdge && hasNegativeEdge,
-          "Observed statistic values should fall on bin edges",
-          {
-            observedStat,
-            negativeObservedStat: -observedStat,
-            binSize,
-            binStarts,
-            closestPositiveEdge:
-              binStarts[positiveDiffs.indexOf(closestPositive)],
-            distanceToPositive: closestPositive,
-            closestNegativeEdge:
-              binStarts[negativeDiffs.indexOf(closestNegative)],
-            distanceToNegative: closestNegative,
-            adjustedMin,
-            adjustedMax,
-            totalBins,
-          }
-        );
-      }
-
-      // Rest of the function remains the same...
+  
+      // Count occurrences in bins
       simulationData.forEach((value) => {
         const binIndex = Math.min(
           Math.floor((value - adjustedMin) / binSize),
@@ -209,44 +373,37 @@ export const PlotDisplay: React.FC = () => {
           bins[binIndex].count++;
         }
       });
-
+  
+      // Create histogram trace
       const histogramTrace: Data = {
         x: bins.map((bin) => (bin.start + bin.end) / 2),
         y: bins.map((bin) => bin.count),
         type: "bar",
         marker: {
-          color:
-            theme === "light"
-              ? "rgba(66, 135, 245, 0.6)"
-              : "rgba(102, 187, 255, 0.6)",
+          color: theme === "light" ? "rgba(66, 135, 245, 0.6)" : "rgba(102, 187, 255, 0.6)",
           line: {
-            color:
-              theme === "light"
-                ? "rgba(66, 135, 245, 1)"
-                : "rgba(102, 187, 255, 1)",
+            color: theme === "light" ? "rgba(66, 135, 245, 1)" : "rgba(102, 187, 255, 1)",
             width: 1,
           },
         },
         name: "Simulated Differences",
       };
-
+  
       const maxCount = Math.max(...bins.map((bin) => bin.count));
-
+  
+      // Create observed statistic line
       const observedStatTrace: Data = {
         x: [observedStat, observedStat],
         y: [0, maxCount + 1],
         type: "scatter",
         mode: "lines",
         line: {
-          color:
-            theme === "light"
-              ? "rgba(255, 0, 0, 0.7)"
-              : "rgba(255, 102, 102, 0.7)",
+          color: theme === "light" ? "rgba(255, 0, 0, 0.7)" : "rgba(255, 102, 102, 0.7)",
           width: 2,
         },
         name: "Observed Statistic",
       };
-
+  
       return {
         plotData: [histogramTrace, observedStatTrace],
         minResult: adjustedMin,
