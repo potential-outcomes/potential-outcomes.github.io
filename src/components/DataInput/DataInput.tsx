@@ -21,7 +21,6 @@ import { Overlay } from "./Overlay";
 import DataControls from "./DataControls";
 import InputCell from "./InputCell";
 import { Flipper, Flipped } from "react-flip-toolkit";
-import { data } from "framer-motion/client";
 
 interface ColumnAveragesProps {
   averages: (number | null)[];

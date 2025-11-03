@@ -54,6 +54,7 @@ export const simulationReducer = (
         data: state.data.userData.columns.map(() => null),
         assignment: row.assignment,
         block: null,
+        assignmentOriginalIndex: row.assignmentOriginalIndex,
       }));
       return {
         ...state,

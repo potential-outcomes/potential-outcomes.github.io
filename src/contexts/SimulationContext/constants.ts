@@ -11,7 +11,7 @@ export const INITIAL_STATE: SimulationState = {
   latestStatisticBarRef: { current: null },
     data: {
       userData: {
-        rows: [{ data: [null, null], assignment: null , block: null}],
+        rows: [{ data: [null, null], assignment: null , block: null, assignmentOriginalIndex: null }],
         columns: [{name: "Control", color: DEFAULT_COLUMN_COLORS[0] }, {name: "Treatment", color: DEFAULT_COLUMN_COLORS[1]}],
         colorStack: DEFAULT_COLUMN_COLORS.slice(2),
       },
