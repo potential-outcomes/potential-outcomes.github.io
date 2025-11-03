@@ -161,6 +161,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
                 Baseline Column
               </label>
               <select
+                aria-label="Select baseline column"
                 value={baselineColumn}
                 onChange={(e) => handleBaselineColumnChange(Number(e.target.value))}
                 className="w-full px-2 py-1.5 text-base border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
@@ -170,26 +171,44 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
+<div className="space-y-2">
               <label className="block text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                Effect columns
+                Other columns
               </label>
-              <ul className="space-y-2">
-                {userData.columns.map((column, index) => (
-                  index !== baselineColumn && (
-                    <li key={index} className="flex items-center space-x-2">
-                      <span className="text-base text-light-text-primary dark:text-dark-text-primary w-1/2 truncate">{column.name}</span>
-                      <input
-                        type="text"
-                        value={effectSizes[index] || ''}
-                        onChange={(e) => handleEffectSizeChange(index, e.target.value)}
-                        className="w-1/2 px-2 py-1.5 text-base border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
-                        placeholder="Effect size"
-                      />
-                    </li>
-                  )
-                ))}
-              </ul>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
+                        Column
+                      </th>
+                      <th className="px-3 py-2 text-left text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
+                        Effect Size
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {userData.columns.map((column, index) => (
+                      index !== baselineColumn && (
+                        <tr key={index} className="bg-white dark:bg-gray-800">
+                          <td className="px-3 py-2 text-base text-light-text-primary dark:text-dark-text-primary truncate">
+                            {column.name}
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={effectSizes[index] || ''}
+                              onChange={(e) => handleEffectSizeChange(index, e.target.value)}
+                              className="w-full px-2 py-1.5 text-base border rounded focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary bg-light-background dark:bg-dark-background text-light-text-primary dark:text-dark-text-primary"
+                              placeholder="0"
+                            />
+                          </td>
+                        </tr>
+                      )
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-light-text-primary dark:text-dark-text-primary">
@@ -201,11 +220,11 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({ disabled = false 
               />
             </div>
             <div className="pt-2">
-              <Tooltip content={isEffectSizesValid ? '' : 'Please enter valid effect sizes for all columns'}>
+              <Tooltip content={isEffectSizesValid ? '' : 'Please enter valid effect sizes for all columns'} className='w-full'>
                 <button
                   onClick={applyTreatmentEffect}
                   disabled={disabled || !isEffectSizesValid}
-                  className={`!w-full px-3 py-2 text-white text-base rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                  className={`w-full px-3 py-2 text-white text-base rounded-md focus:outline-none focus:ring-2 transition-colors duration-200 ${
                     disabled || !isEffectSizesValid
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-light-primary dark:bg-dark-primary hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:ring-light-primary-dark dark:focus:ring-dark-primary-light'

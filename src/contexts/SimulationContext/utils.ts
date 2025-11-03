@@ -8,6 +8,7 @@ export const emptyRow = (columnCount: number): DataRow => ({
   data: Array(columnCount).fill(null),
   assignment: null,
   block: null,
+  assignmentOriginalIndex: null,
 });
 
 export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
@@ -58,37 +59,39 @@ export const calculateColumnStandardDeviations = (rows: DataRow[]): (number | nu
 export const shuffleRowAssignments = (rows: DataRow[], respectBlocks: boolean): DataRow[] => {
   if (!respectBlocks) {
     // If not respecting blocks, simply shuffle all assignments
-    const allAssignments = rows.map(row => row.assignment);
+    const allAssignments = rows.map((row, index) => ({ assignment: row.assignment, originalIndex: index }));
     const shuffledAssignments = shuffleArray(allAssignments);
     return rows.map((row, index) => ({
       ...row,
-      assignment: shuffledAssignments[index]
+      assignment: shuffledAssignments[index].assignment,
+      assignmentOriginalIndex: shuffledAssignments[index].originalIndex
     }));
   }
 
   // If respecting blocks, proceed with the block-based logic
-  const blockGroups: { [key: string]: DataRow[] } = {};
-  rows.forEach(row => {
+  const blockGroups: { [key: string]: { row: DataRow; originalIndex: number }[] } = {};
+  rows.forEach((row, index) => {
     const blockKey = row.block || 'default';
     if (!blockGroups[blockKey]) {
       blockGroups[blockKey] = [];
     }
-    blockGroups[blockKey].push(row);
+    blockGroups[blockKey].push({ row, originalIndex: index });
   });
 
   // Shuffle assignments within each block
   Object.keys(blockGroups).forEach(blockKey => {
     const group = blockGroups[blockKey];
-    const assignments = group.map(row => row.assignment);
+    const assignments = group.map(item => ({ assignment: item.row.assignment, originalIndex: item.originalIndex }));
     const shuffledAssignments = shuffleArray(assignments);
     
-    group.forEach((row, index) => {
-      row.assignment = shuffledAssignments[index];
+    group.forEach((item, index) => {
+      item.row.assignment = shuffledAssignments[index].assignment;
+      item.row.assignmentOriginalIndex = shuffledAssignments[index].originalIndex;
     });
   });
 
   // Flatten the groups back into a single array
-  return Object.values(blockGroups).flat();
+  return Object.values(blockGroups).flat().map(item => item.row);
 };
 
 // Utility function to shuffle an array (used in simulation)

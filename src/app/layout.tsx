@@ -29,7 +29,7 @@ export default function RootLayout({
         <ThemeProvider>
         <HiddenColorClasses />
           <TopBar links={links} />
-          <main className="container mx-auto mt-0 px-6">
+          <main className="container mx-auto mt-0">
             {children}
           </main>
         </ThemeProvider>

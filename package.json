@@ -19,6 +19,7 @@
     "plotly.js-dist-min": "^2.33.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-flip-toolkit": "^7.2.4",
     "react-grid-layout": "^1.4.4",
     "react-plotly.js": "^2.6.0",
     "react-virtualized-auto-sizer": "^1.0.24",

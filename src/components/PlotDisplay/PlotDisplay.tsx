@@ -289,8 +289,8 @@ export const PlotDisplay: React.FC = () => {
             line: {
               color:
                 theme === "light"
-                  ? "rgba(66, 135, 245, 1)"
-                  : "rgba(102, 187, 255, 1)",
+                  ? "rgba(66, 66, 75, 1)"
+                  : "rgba(187, 187, 195, 1)",
               width: 1,
             },
           },
@@ -404,8 +404,8 @@ export const PlotDisplay: React.FC = () => {
           line: {
             color:
               theme === "light"
-                ? "rgba(66, 135, 245, 1)"
-                : "rgba(102, 187, 255, 1)",
+                ? "rgba(66, 66, 75, 1)"
+                : "rgba(187, 187, 195, 1)",
             width: 1,
           },
         },

@@ -27,6 +27,7 @@ import {
 } from "./utils";
 import { testStatistics } from "./testStatistics";
 import { INITIAL_STATE, DEFAULT_COLUMN_COLORS } from "./constants";
+import { i } from "mathjs";
 
 export const SimulationContext = createContext<
   SimulationContextType | undefined
@@ -122,7 +123,23 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   const clearSimulationData = dispatchWithResult(actions.clearSimulationData);
   const undo = dispatchWithResult(actions.undo);
   const redo = dispatchWithResult(actions.redo);
-  const startSimulation = dispatchWithResult(actions.startSimulation);
+  const startSimulation = dispatchWithResult(actions.startSimulation, [
+    {
+      check: () => {
+        const rows = state.data.userData.rows;
+        const incompleteRows = rows
+          .slice(0, -1)
+          .filter(
+            (row) =>
+              row.data.some((cell: any) => cell === null) ||
+              row.assignment === null
+          );
+        return incompleteRows.length > 0;
+      },
+      message: "Ignoring incomplete rows.",
+    },
+  ]);
+
   const pauseSimulation = dispatchWithResult(actions.pauseSimulation);
 
   const simulate = useCallback((data: DataRow[]): SimulationResult => {
@@ -405,7 +422,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
     }));
 
     // Step 9: Create rows with the parsed data
-    const rows: DataRow[] = parsedLines.map((line) => {
+    const rows: DataRow[] = parsedLines.map((line, index) => {
       const data = Array(columns.length).fill(null);
       let assignment: number | null = null;
       line.forEach((item) => {
@@ -419,7 +436,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
           }
         }
       });
-      return { data, assignment, block: null };
+      return { data, assignment, block: null, assignmentOriginalIndex: index };
     });
 
     // Step 10: Validation
@@ -435,6 +452,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       data: Array(columns.length).fill(null),
       assignment: null,
       block: null,
+      assignmentOriginalIndex: null,
     });
 
     return {
