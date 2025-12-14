@@ -3,22 +3,29 @@ import { ExperimentalTestStatistic, TestStatisticMeta, testStatistics } from './
 
 export class SimulationResult {
     rows: DataRow[];
-    private _testStatistics: { [key in ExperimentalTestStatistic]?: number };
+    private _testStatistics: Map<string, number>;
     private testStatisticsFunctions: Record<ExperimentalTestStatistic, TestStatisticMeta>;
   
-    constructor(
-        rows: DataRow[],
-        initialTestStatistics: { [key in ExperimentalTestStatistic]?: number } = {}
-    ) {
+    constructor(rows: DataRow[]) {
       this.rows = rows;
-      this._testStatistics = initialTestStatistics;
+      this._testStatistics = new Map();
       this.testStatisticsFunctions = testStatistics;
     }
   
-    getTestStatistic(testStatType: ExperimentalTestStatistic): number {
-      if (this._testStatistics[testStatType] === undefined) {
-        this._testStatistics[testStatType] = this.testStatisticsFunctions[testStatType].function(this.rows);
+    getTestStatistic(
+      testStatType: ExperimentalTestStatistic,
+      baselineColumn: number
+    ): number {
+      const cacheKey = `${testStatType}-${baselineColumn}`;
+      
+      if (!this._testStatistics.has(cacheKey)) {
+        const result = this.testStatisticsFunctions[testStatType].function(
+          this.rows,
+          baselineColumn
+        );
+        this._testStatistics.set(cacheKey, result);
       }
-      return this._testStatistics[testStatType]!;
+      
+      return this._testStatistics.get(cacheKey)!;
     }
-  }
+}

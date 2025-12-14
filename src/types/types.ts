@@ -5,4 +5,4 @@ export interface DataRow {
     assignment: number | null;
     block: string | null;
     assignmentOriginalIndex: number | null;
-  }
+  }    

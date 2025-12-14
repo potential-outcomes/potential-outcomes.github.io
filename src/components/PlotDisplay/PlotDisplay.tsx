@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useEffect } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+} from "react";
 import dynamic from "next/dynamic";
 import { PlotParams } from "react-plotly.js";
 import { Data, Layout } from "plotly.js";
@@ -9,25 +15,36 @@ import {
   useSimulationResults,
   useLatestStatisticBarRef,
   testStatistics,
-  PValueType,
 } from "@/contexts/SimulationContext";
-import { is } from "@react-three/fiber/dist/declarations/src/core/utils";
+import { ThresholdFilter, Direction } from "./ThresholdFilter";
 
 const Plot = dynamic<PlotParams>(() => import("react-plotly.js"), {
   ssr: false,
 });
 
-const StatDisplay: React.FC<{ title: string; value: string | number }> =
-  React.memo(({ title, value }) => (
-    <div className="bg-light-background-secondary dark:bg-dark-background-tertiary p-2 rounded-lg flex items-center justify-between min-w-0">
-      <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary truncate flex-shrink-0 mr-2">
-        {title}
-      </h4>
-      <p className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary truncate min-w-0 flex-shrink text-right">
-        {value}
-      </p>
-    </div>
-  ));
+const StatDisplay: React.FC<{
+  title: string;
+  value: string | number;
+  isStale?: boolean;
+}> = React.memo(({ title, value, isStale = false }) => (
+  <div
+    className={`
+      bg-light-background-secondary dark:bg-dark-background-tertiary 
+      p-3 rounded-lg flex flex-col gap-1
+      transition-opacity duration-200
+      ${isStale ? "opacity-50" : "opacity-100"}
+    `}
+  >
+    <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+      {title}
+    </h4>
+    <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
+      {value}
+    </p>
+  </div>
+));
+
+StatDisplay.displayName = "StatDisplay";
 
 interface Bin {
   start: number;
@@ -38,234 +55,43 @@ interface Bin {
 export const PlotDisplay: React.FC = () => {
   const plotRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
-  const { simulationResults, observedStatistic } = useSimulationResults();
-  const {
-    selectedTestStatistic,
-    totalSimulations,
-    pValue,
-    pValueType,
-    isSimulating,
-  } = useSimulationState();
+  const { simulationResults, observedStatistic, simulationDataMatchesCurrent } =
+    useSimulationResults();
+  const { userData, selectedTestStatistic, totalSimulations, isSimulating } =
+    useSimulationState();
   const latestStatisticBarRef = useLatestStatisticBarRef();
 
-  // const calculatePlotData = useCallback(
-  //   (simulationData: number[], observedStat: number, theme: string) => {
-  //     if (!simulationData?.length) {
-  //       // Use observedStat to determine scale, or default if none
-  //       const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 10;
-  //       const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
-  //       const dummyMin = -defaultRange;
-  //       const dummyMax = defaultRange;
-  //       const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
+  // Threshold filter state (hoisted from ThresholdFilter component)
+  const [threshold1Direction, setThreshold1Direction] =
+    useState<Direction>("geq");
+  const [threshold1Input, setThreshold1Input] = useState<string>("");
 
-  //       const dummyBins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
-  //         start: dummyMin + i * binSize,
-  //         end: dummyMin + (i + 1) * binSize,
-  //         count: 0,
-  //       }));
+  // Determine if results are stale
+  const isStale = simulationResults.length > 0 && !simulationDataMatchesCurrent;
 
-  //       const histogramTrace: Data = {
-  //         x: dummyBins.map((bin) => (bin.start + bin.end) / 2),
-  //         y: dummyBins.map((bin) => bin.count),
-  //         type: "bar",
-  //         marker: {
-  //           color:
-  //             theme === "light"
-  //               ? "rgba(66, 135, 245, 0.6)"
-  //               : "rgba(102, 187, 255, 0.6)",
-  //           line: {
-  //             color:
-  //               theme === "light"
-  //                 ? "rgba(66, 135, 245, 1)"
-  //                 : "rgba(102, 187, 255, 1)",
-  //             width: 1,
-  //           },
-  //         },
-  //         name: "Simulated Differences",
-  //       };
-
-  //       const observedStatTrace: Data = {
-  //         x: [observedStat, observedStat],
-  //         y: [0, 1], // Using 1 as max since we have no counts
-  //         type: "scatter",
-  //         mode: "lines",
-  //         line: {
-  //           color:
-  //             theme === "light"
-  //               ? "rgba(255, 0, 0, 0.7)"
-  //               : "rgba(255, 102, 102, 0.7)",
-  //           width: 2,
-  //         },
-  //         name: "Observed Statistic",
-  //       };
-
-  //       return {
-  //         plotData: [histogramTrace, observedStatTrace],
-  //         minResult: dummyMin,
-  //         maxResult: dummyMax,
-  //         binSize,
-  //         bins: dummyBins,
-  //         maxCount: 0,
-  //       };
-  //     }
-
-  //     // Get data range, handling case where all points are same value
-  //     const dataMin = Math.min(...simulationData);
-  //     const dataMax = Math.max(...simulationData);
-  //     const hasSpread = dataMin !== dataMax;
-
-  //     // Handle case where observedStat is 0
-  //     const binSize =
-  //       observedStat === 0
-  //         ? 1 // Use unit binSize if observedStat is 0
-  //         : Math.abs(observedStat) /
-  //           Math.ceil(
-  //             (2.75 * Math.abs(observedStat)) /
-  //               Math.max(Math.abs(dataMax), Math.abs(dataMin))
-  //           );
-
-  //     // If no spread in data, create artificial spread around the single value
-  //     const effectiveMin = hasSpread ? dataMin : dataMin - binSize;
-  //     const effectiveMax = hasSpread ? dataMax : dataMax + binSize;
-
-  //     // Step 3: Extend range to nearest bin edge, ensuring we include ±observedStat
-  //     const adjustedMin =
-  //       Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
-  //     const adjustedMax =
-  //       Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
-
-  //     // Step 4: Calculate number of bins needed
-  //     const totalBins = Math.ceil((adjustedMax - adjustedMin) / binSize);
-
-  //     // Step 5: Create bins
-  //     const bins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
-  //       start: adjustedMin + i * binSize,
-  //       end: adjustedMin + (i + 1) * binSize,
-  //       count: 0,
-  //     }));
-
-  //     // Detailed bin edge checking
-  //     const binStarts = bins.map((bin) => bin.start);
-  //     const positiveDiffs = binStarts.map((start) =>
-  //       Math.abs(start - observedStat)
-  //     );
-  //     const negativeDiffs = binStarts.map((start) =>
-  //       Math.abs(start + observedStat)
-  //     );
-
-  //     const closestPositive = Math.min(...positiveDiffs);
-  //     const closestNegative = Math.min(...negativeDiffs);
-
-  //     console.log("Edge checking:", {
-  //       observedStat,
-  //       negativeObservedStat: -observedStat,
-  //       binStarts,
-  //       closestPositiveEdge: binStarts[positiveDiffs.indexOf(closestPositive)],
-  //       distanceToPositive: closestPositive,
-  //       closestNegativeEdge: binStarts[negativeDiffs.indexOf(closestNegative)],
-  //       distanceToNegative: closestNegative,
-  //     });
-
-  //     // Verify both +observedStat and -observedStat fall on bin edges
-  //     if (process.env.NODE_ENV === "development") {
-  //       const hasPositiveEdge = bins.some(
-  //         (bin) =>
-  //           Math.abs(bin.start - observedStat) < 1e-10 ||
-  //           Math.abs(bin.end - observedStat) < 1e-10
-  //       );
-  //       const hasNegativeEdge = bins.some(
-  //         (bin) =>
-  //           Math.abs(bin.start + observedStat) < 1e-10 ||
-  //           Math.abs(bin.end + observedStat) < 1e-10
-  //       );
-  //       console.assert(
-  //         hasPositiveEdge && hasNegativeEdge,
-  //         "Observed statistic values should fall on bin edges",
-  //         {
-  //           observedStat,
-  //           negativeObservedStat: -observedStat,
-  //           binSize,
-  //           binStarts,
-  //           closestPositiveEdge:
-  //             binStarts[positiveDiffs.indexOf(closestPositive)],
-  //           distanceToPositive: closestPositive,
-  //           closestNegativeEdge:
-  //             binStarts[negativeDiffs.indexOf(closestNegative)],
-  //           distanceToNegative: closestNegative,
-  //           adjustedMin,
-  //           adjustedMax,
-  //           totalBins,
-  //         }
-  //       );
-  //     }
-
-  //     simulationData.forEach((value) => {
-  //       const binIndex = Math.min(
-  //         Math.floor((value - adjustedMin) / binSize),
-  //         totalBins - 1
-  //       );
-  //       if (binIndex >= 0 && bins[binIndex]) {
-  //         bins[binIndex].count++;
-  //       }
-  //     });
-
-  //     const histogramTrace: Data = {
-  //       x: bins.map((bin) => (bin.start + bin.end) / 2),
-  //       y: bins.map((bin) => bin.count),
-  //       type: "bar",
-  //       marker: {
-  //         color:
-  //           theme === "light"
-  //             ? "rgba(66, 135, 245, 0.6)"
-  //             : "rgba(102, 187, 255, 0.6)",
-  //         line: {
-  //           color:
-  //             theme === "light"
-  //               ? "rgba(66, 135, 245, 1)"
-  //               : "rgba(102, 187, 255, 1)",
-  //           width: 1,
-  //         },
-  //       },
-  //       name: "Simulated Differences",
-  //     };
-
-  //     const maxCount = Math.max(...bins.map((bin) => bin.count));
-
-  //     const observedStatTrace: Data = {
-  //       x: [observedStat, observedStat],
-  //       y: [0, maxCount + 1],
-  //       type: "scatter",
-  //       mode: "lines",
-  //       line: {
-  //         color:
-  //           theme === "light"
-  //             ? "rgba(255, 0, 0, 0.7)"
-  //             : "rgba(255, 102, 102, 0.7)",
-  //         width: 2,
-  //       },
-  //       name: "Observed Statistic",
-  //     };
-
-  //     return {
-  //       plotData: [histogramTrace, observedStatTrace],
-  //       minResult: adjustedMin,
-  //       maxResult: adjustedMax,
-  //       binSize,
-  //       bins,
-  //       maxCount,
-  //     };
-  //   },
-  //   [isSimulating, simulationResults.length, selectedTestStatistic]
-  // );
+  // Parse threshold values
+  const threshold1Value = useMemo(() => {
+    const parsed = parseFloat(threshold1Input);
+    return isNaN(parsed) ? null : parsed;
+  }, [threshold1Input]);
 
   const calculatePlotData = useCallback(
-    (simulationData: number[], observedStat: number, theme: string) => {
+    (
+      simulationData: number[],
+      observedStat: number,
+      theme: string,
+      isStale: boolean
+    ) => {
       const isPositiveOnly =
         testStatistics[selectedTestStatistic].alwaysPositive;
 
+      // Adjust opacity based on stale status
+      const baseOpacity = isStale ? 0.3 : 0.6;
+      const lineOpacity = isStale ? 0.4 : 1.0;
+
       if (!simulationData?.length) {
         // Initialize empty plot with appropriate scale
-        const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 10;
+        const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
         const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
         const dummyMin = isPositiveOnly ? 0 : -defaultRange;
         const dummyMax = defaultRange;
@@ -284,36 +110,21 @@ export const PlotDisplay: React.FC = () => {
           marker: {
             color:
               theme === "light"
-                ? "rgba(66, 135, 245, 0.6)"
-                : "rgba(102, 187, 255, 0.6)",
+                ? `rgba(66, 135, 245, ${baseOpacity})`
+                : `rgba(102, 187, 255, ${baseOpacity})`,
             line: {
               color:
                 theme === "light"
-                  ? "rgba(66, 66, 75, 1)"
-                  : "rgba(187, 187, 195, 1)",
+                  ? `rgba(66, 66, 75, ${lineOpacity})`
+                  : `rgba(187, 187, 195, ${lineOpacity})`,
               width: 1,
             },
           },
-          name: "Simulated Differences",
-        };
-
-        const observedStatTrace: Data = {
-          x: [observedStat, observedStat],
-          y: [0, 1],
-          type: "scatter",
-          mode: "lines",
-          line: {
-            color:
-              theme === "light"
-                ? "rgba(255, 0, 0, 0.7)"
-                : "rgba(255, 102, 102, 0.7)",
-            width: 2,
-          },
-          name: "Observed Statistic",
+          name: "Simulated Statistics",
         };
 
         return {
-          plotData: [histogramTrace, observedStatTrace],
+          plotData: [histogramTrace],
           minResult: dummyMin,
           maxResult: dummyMax,
           binSize,
@@ -327,49 +138,44 @@ export const PlotDisplay: React.FC = () => {
       const dataMax = Math.max(...simulationData);
       const hasSpread = dataMin !== dataMax;
 
-      // Calculate bin size based on data and observed statistic
+      // Calculate bin size using Scott's rule: bin width = 3.49 × σ / n^(1/3)
+      const n = simulationData.length;
+      const mean = simulationData.reduce((sum, val) => sum + val, 0) / n;
+      const variance =
+        simulationData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+        n;
+      const standardDeviation = Math.sqrt(variance);
+
+      // Apply Scott's rule: bin width = 3.49 × σ / n^(1/3)
       let binSize =
-        observedStat === 0
-          ? 1
-          : Math.abs(observedStat) /
-            Math.ceil(
-              ((isPositiveOnly ? 3 : 3) * Math.abs(observedStat)) /
-                Math.max(Math.abs(dataMax), Math.abs(dataMin))
-            );
+        standardDeviation > 0
+          ? (3.49 * standardDeviation) / Math.pow(n, 1 / 3)
+          : hasSpread
+          ? (dataMax - dataMin) / 10 // Fallback: use 10 bins if no variance
+          : 1; // Fallback: use bin size of 1 if no spread
+
+      // Ensure minimum bin size to avoid division by zero or too many bins
+      if (binSize <= 0 || !isFinite(binSize)) {
+        binSize = hasSpread ? (dataMax - dataMin) / 10 : 1;
+      }
 
       // Determine range
       const effectiveMin = hasSpread ? dataMin : dataMin - binSize;
       const effectiveMax = hasSpread ? dataMax : dataMax + binSize;
 
-      // Calculate adjusted range
+      // Calculate adjusted range (round to bin edges for clean binning)
       let adjustedMin: number;
       let adjustedMax: number;
 
       if (isPositiveOnly) {
-        // For positive-only statistics, start from 0 and extend past the maximum
         adjustedMin = 0;
-        adjustedMax =
-          Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
+        const maxValue = Math.max(effectiveMax, observedStat);
+        adjustedMax = Math.ceil(maxValue / binSize) * binSize;
       } else {
-        // For two-tailed statistics, ensure symmetry and bin alignment
-        adjustedMin =
-          Math.floor(Math.min(effectiveMin, -observedStat) / binSize) * binSize;
-        adjustedMax =
-          Math.ceil(Math.max(effectiveMax, observedStat) / binSize) * binSize;
-
-        // Verify bin alignment for observed statistic
-        if (process.env.NODE_ENV === "development") {
-          const positiveObsStatBin =
-            Math.round(observedStat / binSize) * binSize;
-          const negativeObsStatBin =
-            Math.round(-observedStat / binSize) * binSize;
-          console.assert(
-            Math.abs(positiveObsStatBin - observedStat) < 1e-10 &&
-              Math.abs(negativeObsStatBin + observedStat) < 1e-10,
-            "Observed statistic values should fall on bin edges",
-            { observedStat, binSize, positiveObsStatBin, negativeObsStatBin }
-          );
-        }
+        const minValue = Math.min(effectiveMin, -observedStat);
+        const maxValue = Math.max(effectiveMax, observedStat);
+        adjustedMin = Math.floor(minValue / binSize) * binSize;
+        adjustedMax = Math.ceil(maxValue / binSize) * binSize;
       }
 
       // Create bins
@@ -399,39 +205,23 @@ export const PlotDisplay: React.FC = () => {
         marker: {
           color:
             theme === "light"
-              ? "rgba(66, 135, 245, 0.6)"
-              : "rgba(102, 187, 255, 0.6)",
+              ? `rgba(66, 135, 245, ${baseOpacity})`
+              : `rgba(102, 187, 255, ${baseOpacity})`,
           line: {
             color:
               theme === "light"
-                ? "rgba(66, 66, 75, 1)"
-                : "rgba(187, 187, 195, 1)",
+                ? `rgba(66, 66, 75, ${lineOpacity})`
+                : `rgba(187, 187, 195, ${lineOpacity})`,
             width: 1,
           },
         },
-        name: "Simulated Differences",
+        name: "Simulated Statistics",
       };
 
       const maxCount = Math.max(...bins.map((bin) => bin.count));
 
-      // Create observed statistic line
-      const observedStatTrace: Data = {
-        x: [observedStat, observedStat],
-        y: [0, maxCount + 1],
-        type: "scatter",
-        mode: "lines",
-        line: {
-          color:
-            theme === "light"
-              ? "rgba(255, 0, 0, 0.7)"
-              : "rgba(255, 102, 102, 0.7)",
-          width: 2,
-        },
-        name: "Observed Statistic",
-      };
-
       return {
-        plotData: [histogramTrace, observedStatTrace],
+        plotData: [histogramTrace],
         minResult: adjustedMin,
         maxResult: adjustedMax,
         binSize,
@@ -445,13 +235,14 @@ export const PlotDisplay: React.FC = () => {
   const simulationData = useMemo(
     () =>
       simulationResults.map((result) =>
-        result.getTestStatistic(selectedTestStatistic)
+        result.getTestStatistic(selectedTestStatistic, userData.baselineColumn)
       ),
     [isSimulating, simulationResults.length, selectedTestStatistic]
   );
 
   const { plotData, minResult, maxResult, binSize, bins, maxCount } = useMemo(
-    () => calculatePlotData(simulationData, observedStatistic || 0, theme),
+    () =>
+      calculatePlotData(simulationData, observedStatistic || 0, theme, isStale),
     [
       calculatePlotData,
       simulationData,
@@ -459,8 +250,38 @@ export const PlotDisplay: React.FC = () => {
       theme,
       isSimulating,
       simulationResults.length,
+      isStale,
     ]
   );
+
+  // Add threshold lines to plot data if thresholds are set
+  const plotDataWithThresholds = useMemo(() => {
+    const thresholdLineOpacity = isStale ? 0.4 : 0.8;
+    const traces = [...plotData];
+
+    if (threshold1Value !== null) {
+      const thresholdLine1: Data = {
+        x: [threshold1Value, threshold1Value],
+        y: [0, maxCount + 1],
+        type: "scatter",
+        mode: "lines",
+        line: {
+          color:
+            theme === "light"
+              ? `rgba(220, 38, 38, ${thresholdLineOpacity})`
+              : `rgba(248, 113, 113, ${thresholdLineOpacity})`,
+          width: 3,
+          dash: "dash",
+        },
+        name: "Threshold",
+        showlegend: true,
+        legendgroup: "thresholds",
+      };
+      traces.push(thresholdLine1);
+    }
+
+    return traces;
+  }, [plotData, threshold1Value, maxCount, theme, isStale]);
 
   const layout: Partial<Layout> = useMemo(
     () => ({
@@ -481,16 +302,24 @@ export const PlotDisplay: React.FC = () => {
         titlefont: { color: theme === "light" ? "black" : "white" },
         range: [0, maxCount + 1],
       },
-      bargap: 0.05,
+      bargap: 0,
       showlegend: true,
       legend: {
-        x: 0.7,
-        y: 1,
+        x: 0.98,
+        y: 0.98,
+        xanchor: "right",
+        yanchor: "top",
+        bgcolor:
+          theme === "light" ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)",
+        bordercolor:
+          theme === "light" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
+        borderwidth: 1,
         font: { color: theme === "light" ? "black" : "white" },
       },
+      annotations: [],
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)",
-      margin: { l: 45, r: 35, b: 35, t: 0 },
+      margin: { l: 45, r: 35, b: 32, t: 0 },
     }),
     [selectedTestStatistic, theme, minResult, maxResult, binSize, maxCount]
   );
@@ -512,70 +341,248 @@ export const PlotDisplay: React.FC = () => {
     return bins.findIndex((bin) => value >= bin.start && value < bin.end);
   };
 
-  const isExtremeBin = (
+  // Check if bin meets threshold criteria for either threshold
+  const meetsThreshold = (
     bin: Bin,
-    observedStat: number,
-    pValueType: PValueType
+    threshold1: number | null,
+    direction1: Direction
   ): boolean => {
     const binCenter = (bin.start + bin.end) / 2;
-    switch (pValueType) {
-      case "two-tailed":
-        return Math.abs(binCenter) >= Math.abs(observedStat);
-      case "left-tailed":
-        return binCenter <= observedStat;
-      case "right-tailed":
-        return binCenter >= observedStat;
-    }
+
+    if (threshold1 === null) return false;
+
+    return direction1 === "leq"
+      ? binCenter <= threshold1
+      : binCenter >= threshold1;
   };
 
   const getBarColor = (
-    isExtreme: boolean,
     isLatest: boolean,
+    meetsThresholdCriteria: boolean,
     theme: string,
-    isSimulating: boolean
+    isSimulating: boolean,
+    isStale: boolean
   ) => {
-    if (isSimulating && isLatest && isExtreme) {
-      return "rgba(255, 100, 100, 0.8)";
-    } else if (isSimulating && isLatest) {
-      return "rgba(80, 150, 235, 0.8)";
-    } else if (isExtreme) {
-      return "rgba(255, 0, 0, 0.15)";
-    } else {
-      return theme === "light"
-        ? "rgba(66, 135, 245, 0.4)"
-        : "rgba(102, 187, 255, 0.4)";
+    const staleOpacity = isStale ? 0.3 : 1.0;
+
+    // Highlight the latest bar during simulation - this takes priority
+    if (isSimulating && isLatest) {
+      // Use red highlight if it meets threshold criteria
+      if (threshold1Value !== null && meetsThresholdCriteria) {
+        return theme === "light"
+          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+          : `rgba(248, 113, 113, ${0.8 * staleOpacity})`;
+      }
+      // Otherwise use blue highlight
+      return `rgba(80, 150, 235, ${0.8 * staleOpacity})`;
     }
+
+    // Threshold shading when threshold is set and bar meets criteria
+    if (threshold1Value !== null && meetsThresholdCriteria) {
+      return theme === "light"
+        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+        : `rgba(248, 113, 113, ${0.3 * staleOpacity})`;
+    }
+
+    // Default bar color
+    return theme === "light"
+      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+      : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
   };
 
+  // Helper to get colors for left and right sides of a split bar
+  const getSplitBarColors = (
+    bin: Bin,
+    isLatest: boolean,
+    theme: string,
+    isSimulating: boolean,
+    isStale: boolean,
+    threshold: number,
+    direction: Direction
+  ): { leftColor: string; rightColor: string } => {
+    const staleOpacity = isStale ? 0.3 : 1.0;
+
+    // Determine if left and right sides meet threshold criteria
+    // Left side: values from bin.start to threshold
+    // Right side: values from threshold to bin.end
+    // For "leq" (≤): values ≤ threshold meet criteria
+    // For "geq" (≥): values ≥ threshold meet criteria
+    const leftSideMeets = direction === "leq"; // All values in left side are ≤ threshold
+    const rightSideMeets = direction === "geq"; // All values in right side are ≥ threshold
+
+    // For latest bar during simulation, use highlight colors
+    if (isSimulating && isLatest) {
+      const leftColor = leftSideMeets
+        ? theme === "light"
+          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+          : `rgba(248, 113, 113, ${0.8 * staleOpacity})`
+        : `rgba(80, 150, 235, ${0.8 * staleOpacity})`;
+      const rightColor = rightSideMeets
+        ? theme === "light"
+          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+          : `rgba(248, 113, 113, ${0.8 * staleOpacity})`
+        : `rgba(80, 150, 235, ${0.8 * staleOpacity})`;
+      return { leftColor, rightColor };
+    }
+
+    // For threshold shading
+    const leftColor = leftSideMeets
+      ? theme === "light"
+        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+        : `rgba(248, 113, 113, ${0.3 * staleOpacity})`
+      : theme === "light"
+      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+      : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
+    const rightColor = rightSideMeets
+      ? theme === "light"
+        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+        : `rgba(248, 113, 113, ${0.3 * staleOpacity})`
+      : theme === "light"
+      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+      : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
+
+    return { leftColor, rightColor };
+  };
+
+  // Ensure SVG gradient definitions exist
+  const ensureGradientDefs = useCallback(() => {
+    if (!plotRef.current) return;
+
+    // Find or create the SVG element
+    const svg = plotRef.current.querySelector("svg");
+    if (!svg) return;
+
+    // Find or create defs element
+    let defs = svg.querySelector("defs");
+    if (!defs) {
+      defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    return defs;
+  }, []);
+
   const updateBarColors = useCallback(() => {
-    if (plotRef.current && observedStatistic !== null) {
+    if (plotRef.current) {
       const bars = plotRef.current.querySelectorAll(".bars .point");
       if (bars.length === 0) return;
 
       const latestStatistic = simulationResults[
         simulationResults.length - 1
-      ]?.getTestStatistic(selectedTestStatistic);
+      ]?.getTestStatistic(selectedTestStatistic, userData.baselineColumn);
       const latestBinIndex =
         latestStatistic !== undefined
           ? findBinIndex(latestStatistic, bins)
           : -1;
 
+      const defs = ensureGradientDefs();
+
       bars.forEach((bar, index) => {
         const path = bar.querySelector("path");
         if (path && bins[index]) {
-          const isExtreme = isExtremeBin(
-            bins[index],
-            observedStatistic,
-            pValueType
-          );
+          const bin = bins[index];
           const isLatest = index === latestBinIndex;
 
-          path.style.fill = getBarColor(
-            isExtreme,
-            isLatest,
-            theme,
-            isSimulating
-          );
+          // Check if threshold falls within this bin
+          const thresholdInBin =
+            threshold1Value !== null &&
+            threshold1Value > bin.start &&
+            threshold1Value < bin.end;
+
+          if (thresholdInBin && defs) {
+            // Calculate threshold position as percentage
+            const binWidth = bin.end - bin.start;
+            const thresholdPosition =
+              ((threshold1Value - bin.start) / binWidth) * 100;
+
+            // Get colors for left and right sides
+            const { leftColor, rightColor } = getSplitBarColors(
+              bin,
+              isLatest,
+              theme,
+              isSimulating,
+              isStale,
+              threshold1Value!,
+              threshold1Direction
+            );
+
+            // Create unique gradient ID for this bar
+            const gradientId = `gradient-${index}`;
+
+            // Remove existing gradient if any
+            const existingGradient = defs.querySelector(`#${gradientId}`);
+            if (existingGradient) {
+              existingGradient.remove();
+            }
+
+            // Create SVG linear gradient
+            const gradient = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "linearGradient"
+            );
+            gradient.setAttribute("id", gradientId);
+            gradient.setAttribute("x1", "0%");
+            gradient.setAttribute("y1", "0%");
+            gradient.setAttribute("x2", "100%");
+            gradient.setAttribute("y2", "0%");
+
+            // Add color stops
+            const stop1 = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "stop"
+            );
+            stop1.setAttribute("offset", "0%");
+            stop1.setAttribute("stop-color", leftColor);
+            gradient.appendChild(stop1);
+
+            const stop2 = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "stop"
+            );
+            stop2.setAttribute("offset", `${thresholdPosition}%`);
+            stop2.setAttribute("stop-color", leftColor);
+            gradient.appendChild(stop2);
+
+            const stop3 = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "stop"
+            );
+            stop3.setAttribute("offset", `${thresholdPosition}%`);
+            stop3.setAttribute("stop-color", rightColor);
+            gradient.appendChild(stop3);
+
+            const stop4 = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "stop"
+            );
+            stop4.setAttribute("offset", "100%");
+            stop4.setAttribute("stop-color", rightColor);
+            gradient.appendChild(stop4);
+
+            defs.appendChild(gradient);
+
+            // Apply gradient to path (clear style.fill to avoid conflicts)
+            path.style.fill = "";
+            path.setAttribute("fill", `url(#${gradientId})`);
+          } else {
+            // Use solid color for bars without threshold split
+            const meetsThresholdCriteria = meetsThreshold(
+              bin,
+              threshold1Value,
+              threshold1Direction
+            );
+
+            // Remove any gradient reference and use solid color
+            path.removeAttribute("fill");
+            path.style.fill = getBarColor(
+              isLatest,
+              meetsThresholdCriteria,
+              theme,
+              isSimulating,
+              isStale
+            );
+          }
+
           path.style.zIndex = isLatest ? "1000" : "1";
 
           if (isLatest) {
@@ -586,26 +593,50 @@ export const PlotDisplay: React.FC = () => {
     }
   }, [
     bins,
-    observedStatistic,
-    pValueType,
     theme,
     simulationResults,
     selectedTestStatistic,
+    userData.baselineColumn,
     latestStatisticBarRef,
+    isStale,
+    threshold1Value,
+    threshold1Direction,
+    isSimulating,
+    ensureGradientDefs,
   ]);
 
-  // Effect still needed for reactive updates
   useEffect(() => {
     updateBarColors();
   }, [updateBarColors]);
 
+  // Calculate simulation progress
+  const simulationProgress = useMemo(() => {
+    const current = simulationResults.length;
+    const total = totalSimulations;
+    const percentage = total > 0 ? (current / total) * 100 : 0;
+    return { current, total, percentage };
+  }, [simulationResults.length, totalSimulations]);
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-grow min-h-0" ref={plotRef}>
+      {/* Warning banner when stale */}
+      {isStale && (
+        <div className="mb-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded text-sm text-yellow-800 dark:text-yellow-200">
+          Results are from previous data. Run simulation again to update.
+        </div>
+      )}
+
+      <div
+        className={`
+          flex-grow min-h-0 transition-opacity duration-200
+          ${isStale ? "opacity-60" : "opacity-100"}
+        `}
+        ref={plotRef}
+      >
         <AutoSizer>
           {({ height, width }) => (
             <Plot
-              data={plotData}
+              data={plotDataWithThresholds}
               layout={layout}
               config={{ responsive: true, autosizable: true }}
               style={{ width, height: height * 0.85 }}
@@ -621,22 +652,42 @@ export const PlotDisplay: React.FC = () => {
           )}
         </AutoSizer>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <StatDisplay
-          title="Observed Statistic"
-          value={
-            observedStatistic !== null ? observedStatistic.toFixed(4) : "N/A"
-          }
-        />
-        <StatDisplay
-          title="P-value"
-          value={pValue !== null && !isNaN(pValue) ? pValue.toFixed(4) : "N/A"}
-        />
-        <StatDisplay
-          title="Current Progress"
-          value={`${simulationResults.length} / ${totalSimulations}`}
-        />
+
+      {/* Cards row below plot, above threshold filter */}
+      <div className="flex gap-4 mb-4">
+        {/* Observed Statistic Card */}
+        <div className="flex-1">
+          <StatDisplay
+            title="Observed Statistic"
+            value={
+              observedStatistic !== null && observedStatistic !== undefined
+                ? observedStatistic.toFixed(3)
+                : "—"
+            }
+            isStale={isStale}
+          />
+        </div>
+
+        {/* Simulation Progress Card */}
+        <div className="flex-1">
+          <StatDisplay
+            title="Simulation Progress"
+            value={
+              isSimulating || simulationProgress.current > 0
+                ? `${simulationProgress.current} / ${simulationProgress.total}`
+                : "—"
+            }
+            isStale={isStale}
+          />
+        </div>
       </div>
+
+      <ThresholdFilter
+        threshold1Direction={threshold1Direction}
+        setThreshold1Direction={setThreshold1Direction}
+        threshold1Input={threshold1Input}
+        setThreshold1Input={setThreshold1Input}
+      />
     </div>
   );
 };

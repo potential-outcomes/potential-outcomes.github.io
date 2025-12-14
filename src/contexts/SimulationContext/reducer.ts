@@ -11,6 +11,7 @@ import {
   validateSelectedTestStatistic,
   validateTotalSimulations,
   validatePValueType,
+  getCompleteRows,
 } from "./utils";
 import { ExperimentalTestStatistic, testStatistics } from "./testStatistics";
 import { INITIAL_STATE } from "./constants";
@@ -43,6 +44,7 @@ export const simulationReducer = (
         ...updateHistory(initialUserData),
         results: {
           simulationResults: [],
+          simulationDataSnapshot: INITIAL_STATE.results.simulationDataSnapshot,
           pValue: null,
           observedStatistic: null,
         },
@@ -261,6 +263,29 @@ export const simulationReducer = (
       return newState;
     }
 
+    case "SET_BASELINE_COLUMN": {
+      if (
+        action.payload < 0 ||
+        action.payload >= state.data.userData.columns.length
+      ) {
+        return {
+          ...state,
+          error: setError(`Invalid baseline column index ${action.payload}`),
+        };
+      }
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          userData: {
+            ...state.data.userData,
+            baselineColumn: action.payload,
+          },
+        },
+        error: null,
+      };
+    }
+
     case "REMOVE_COLUMN":
       const columnIndexToRemove = action.payload;
       if (
@@ -300,6 +325,15 @@ export const simulationReducer = (
         ...state.data.userData.colorStack,
       ];
 
+      let newBaselineColumn = state.data.userData.baselineColumn;
+      if (state.data.userData.baselineColumn === columnIndexToRemove) {
+        // If removing the baseline, set baseline to first remaining column
+        newBaselineColumn = 0;
+      } else if (state.data.userData.baselineColumn > columnIndexToRemove) {
+        // If baseline is after removed column, shift it down
+        newBaselineColumn = state.data.userData.baselineColumn - 1;
+      }
+
       return {
         ...state,
         ...updateHistory({
@@ -307,6 +341,7 @@ export const simulationReducer = (
           rows: rowsWithColumnRemoved,
           columns: updatedColumns,
           colorStack: updatedColorStack,
+          baselineColumn: newBaselineColumn,
         }),
         error: null,
       };
@@ -362,16 +397,12 @@ export const simulationReducer = (
         settings: { ...state.settings, pValueType: action.payload },
         error: null,
       };
-
     case "START_SIMULATION":
       if (state.control.isSimulating) {
         return { ...state, error: setError("Simulation is already running") };
       }
 
-      const completeRows = state.data.userData.rows.filter(
-        (row) =>
-          row.data.every((cell) => cell !== null) && row.assignment !== null
-      );
+      const completeRows = getCompleteRows(state.data.userData.rows);
 
       if (completeRows.length < 2) {
         return {
@@ -382,21 +413,19 @@ export const simulationReducer = (
         };
       }
 
-      // possible assignments = length of columns - 1
-      // make sure each assignment has at least one row assigned to it
       const { columns } = state.data.userData;
       const assignmentCounts = new Array(columns.length).fill(0);
-    
+
       completeRows.forEach((row) => {
         if (row.assignment !== null) {
           assignmentCounts[row.assignment]++;
         }
       });
-    
+
       const missingAssignments = assignmentCounts
         .map((count, i) => ({ name: columns[i].name, count }))
         .filter(({ count }) => count === 0);
-    
+
       if (missingAssignments.length > 0) {
         return {
           ...state,
@@ -408,9 +437,19 @@ export const simulationReducer = (
         };
       }
 
+      const dataSnapshot = {
+        rows: completeRows.map((row) => ({ ...row })),
+        baselineColumn: state.data.userData.baselineColumn,
+        blockingEnabled: state.data.userData.blockingEnabled,
+      };
+
       return {
         ...state,
         control: { ...state.control, isSimulating: true },
+        results: {
+          ...state.results,
+          simulationDataSnapshot: dataSnapshot,
+        },
         error: null,
       };
 
@@ -434,6 +473,7 @@ export const simulationReducer = (
           simulationResults: [],
           pValue: null,
           observedStatistic: null,
+          simulationDataSnapshot: null,
         },
         error: null,
       };
@@ -475,10 +515,10 @@ export const simulationReducer = (
     case "SET_BLOCKING_ENABLED":
       return {
         ...state,
-        settings: {
-          ...state.settings,
+        ...updateHistory({
+          ...state.data.userData,
           blockingEnabled: action.payload,
-        },
+        }),
         error: null,
       };
 

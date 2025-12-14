@@ -23,6 +23,7 @@ export const SimulationControls: React.FC = () => {
     pValueType,
     isSimulating,
     simulationResults,
+    simulationDataMatchesCurrent,
   } = useSimulationState();
 
   const {
@@ -95,7 +96,7 @@ export const SimulationControls: React.FC = () => {
       return { icon: <Icons.Pause size={5} />, text: "Pause" };
     } else if (!simulationResults || simulationResults.length === 0) {
       return { icon: <Icons.Play size={5} />, text: "Play" };
-    } else if (simulationResults.length < totalSimulations) {
+    } else if (simulationResults.length < totalSimulations && simulationDataMatchesCurrent) {
       return { icon: <Icons.Continue size={5} />, text: "Continue" };
     } else {
       return { icon: <Icons.RewindPlay size={5} />, text: "Restart" };
@@ -131,7 +132,10 @@ export const SimulationControls: React.FC = () => {
   ]);
 
   const handleSimulationAction = async () => {
-    if (simulationResults && simulationResults.length >= totalSimulations) {
+    if (
+      (simulationResults && simulationResults.length >= totalSimulations) ||
+      !simulationDataMatchesCurrent
+    ) {
       clearSimulationData();
     }
     const result = isSimulating ? pauseSimulation() : startSimulation();
@@ -191,7 +195,7 @@ export const SimulationControls: React.FC = () => {
       </div>
 
       {/* P-value Type */}
-      <div className="flex flex-col md:flex-row md:items-center md:gap-3">
+      {/* <div className="flex flex-col md:flex-row md:items-center md:gap-3">
         <label htmlFor="pValueType" className="font-semibold md:w-48 shrink-0">
           P-value Type:
         </label>
@@ -210,7 +214,7 @@ export const SimulationControls: React.FC = () => {
           )}
           <option value="right-tailed">Right-tailed</option>
         </select>
-      </div>
+      </div> */}
 
       {/* Play + Clear in one row */}
       <div className="flex flex-col md:flex-row md:items-start gap-2">

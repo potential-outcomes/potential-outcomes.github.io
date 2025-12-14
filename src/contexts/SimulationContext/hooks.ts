@@ -58,7 +58,7 @@ export function useSimulationState() {
   const { userData } = context.data;
   const { simulationSpeed, selectedTestStatistic, totalSimulations, pValueType } = context.settings;
   const { isSimulating } = context.control;
-  const { simulationResults, pValue, observedStatistic } = context.results;
+  const { simulationResults, pValue, observedStatistic, simulationDataMatchesCurrent } = context.results;
 
   return {
     userData,
@@ -69,6 +69,7 @@ export function useSimulationState() {
     isSimulating,
     simulationResults,
     pValue,
-    observedStatistic
+    observedStatistic,
+    simulationDataMatchesCurrent
   };
 }

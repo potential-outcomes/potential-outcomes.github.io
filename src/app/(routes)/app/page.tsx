@@ -39,7 +39,7 @@ const SimulationPage: React.FC = () => {
       <div className="flex flex-col min-h-screen py-3 px-1 sm:px-2 md:px-3 lg:px-4">
         <div className="flex flex-col lg:flex-row gap-4 flex-grow h-[calc(100vh-6rem)] items-stretch">
           {/* Left Column: Data Entry */}
-          <div className="flex-shrink w-full lg:w-1/2">
+          <div className="flex-shrink w-full lg:w-1/2 flex flex-col">
             <Card>
               <DataInput />
             </Card>
@@ -50,7 +50,7 @@ const SimulationPage: React.FC = () => {
             <Card>
               <SimulationControls />
             </Card>
-            <Card className="flex flex-col flex-grow max-h-[500px]">
+            <Card className="flex flex-col flex-grow max-h-[600px]">
               <div className="flex-grow">
                 <PlotDisplay />
               </div>

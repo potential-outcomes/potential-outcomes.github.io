@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import PhantomNumber from "./PhantomNumber";
-import { re } from "mathjs";
 
 interface InputCellProps {
   value: number | null;
@@ -12,6 +11,15 @@ interface InputCellProps {
   triggerPhantom: boolean;
   phantomDuration: number;
   rowIndex: number;
+  columnIndex: number;
+  totalColumns: number;
+  totalRows: number;
+  showBlocks: boolean;
+  onNavigation: (
+    direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
+    rowIndex: number,
+    columnIndex: number
+  ) => void;
 }
 
 interface PhantomInstance {
@@ -30,6 +38,11 @@ const InputCell: React.FC<InputCellProps> = ({
   phantomDuration,
   triggerPhantom,
   rowIndex,
+  columnIndex,
+  totalColumns,
+  totalRows,
+  showBlocks,
+  onNavigation,
 }) => {
   const [placeholder, setPlaceholder] = useState("?");
   const [phantoms, setPhantoms] = useState<PhantomInstance[]>([]);
@@ -119,6 +132,56 @@ const InputCell: React.FC<InputCellProps> = ({
     );
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
+
+    const input = e.currentTarget;
+    const isOptionPressed = e.altKey || e.metaKey; // Option on Mac, Alt on Windows/Linux
+    const cursorPosition = input.selectionStart ?? 0;
+    const selectionEnd = input.selectionEnd ?? 0;
+    const inputValue = input.value || "";
+    const textLength = inputValue.length;
+    const hasSelection = cursorPosition !== selectionEnd;
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      onNavigation("up", rowIndex, columnIndex);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      onNavigation("down", rowIndex, columnIndex);
+    } else if (e.key === "ArrowLeft") {
+      if (isOptionPressed) {
+        e.preventDefault();
+        onNavigation("left", rowIndex, columnIndex);
+      } else {
+        if (cursorPosition === 0 && selectionEnd === 0) {
+          e.preventDefault();
+          onNavigation("left", rowIndex, columnIndex);
+        }
+      }
+    } else if (e.key === "ArrowRight") {
+      if (isOptionPressed) {
+        e.preventDefault();
+        onNavigation("right", rowIndex, columnIndex);
+      } else {
+        // Check if cursor is ALREADY at the end
+        if (cursorPosition >= textLength) {
+          e.preventDefault();
+          onNavigation("right", rowIndex, columnIndex);
+        }
+      }
+    } else if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      onNavigation("tab", rowIndex, columnIndex);
+    } else if (e.key === "Tab" && e.shiftKey) {
+      e.preventDefault();
+      onNavigation("shiftTab", rowIndex, columnIndex);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      onNavigation("enter", rowIndex, columnIndex);
+    }
+  };
+
   return (
     <div
       className={`relative w-full h-full z-0 text-inherit ${
@@ -127,15 +190,21 @@ const InputCell: React.FC<InputCellProps> = ({
     >
       <input
         ref={inputRef}
-        type="number"
+        type="text"
         value={value === null ? "" : value}
         onChange={(e) => {
           if (!disabled) {
-            const newValue = e.target.value ? Number(e.target.value) : null;
-            onChange(newValue);
+            const text = e.target.value;
+            // Allow empty or valid numbers (including negative, decimals if needed)
+            if (text === "" || /^-?\d*\.?\d*$/.test(text)) {
+              const newValue = text === "" ? null : Number(text);
+              onChange(newValue);
+            }
           }
         }}
+        onKeyDown={handleKeyDown}
         onWheel={(e) => (e.target as HTMLElement).blur()}
+        data-cell-id={`input-${rowIndex}-${columnIndex}`}
         className={`
           w-full h-full px-6 py-1 text-center relative z-0
           bg-light-background-secondary dark:bg-[rgb(40,50,65)]

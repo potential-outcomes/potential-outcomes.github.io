@@ -15,13 +15,14 @@ export enum ExperimentalTestStatistic {
 
 export interface TestStatisticMeta {
   name: string;
-  function: (rows: DataRow[]) => number;
+  function: TestStatisticFunction;
   supportsMultipleTreatments: boolean;
   alwaysPositive: boolean;
+  usesBaseline: boolean;
 }
 
 export interface TestStatisticFunction {
-  (data: DataRow[]): number;
+  (data: DataRow[], baselineColumn: number): number;
 }
 
 const safeMedian = (arr: number[]): number => {
@@ -39,7 +40,10 @@ const safeMean = (arr: number[]): number => {
   return Number(mean(arr));
 };
 
-const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
+const differenceInMeans: TestStatisticFunction = (
+  data: DataRow[],
+  baselineColumn: number
+) => {
   if (!data || data.length === 0) return 0;
 
   const groups: Record<number, number[]> = {};
@@ -55,23 +59,33 @@ const differenceInMeans: TestStatisticFunction = (data: DataRow[]) => {
     }
   }
 
-  // Ensure we have at least two groups
-  if (Object.keys(groups).length < 2) return 0;
+  // Ensure we have baseline and at least one other group
+  if (Object.keys(groups).length < 2 || !groups[baselineColumn]) return 0;
 
-  // Calculate means for group 0 (control) and group 1 (treatment)
-  const controlMean = safeMean(groups[0] || []);
-  const treatmentMean = safeMean(groups[1] || []);
+  // Find the treatment group (first non-baseline group)
+  const treatmentColumn = Object.keys(groups)
+    .map(Number)
+    .find((col) => col !== baselineColumn);
 
-  // Return the difference (treatment - control)
-  return treatmentMean - controlMean;
+  if (treatmentColumn === undefined || !groups[treatmentColumn]) return 0;
+
+  // Calculate means
+  const baselineMean = safeMean(groups[baselineColumn]);
+  const treatmentMean = safeMean(groups[treatmentColumn]);
+
+  // Return the difference (treatment - baseline)
+  return treatmentMean - baselineMean;
 };
 
-const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
+const wilcoxonRankSum: TestStatisticFunction = (
+  data: DataRow[],
+  baselineColumn: number
+) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
-    const value = row.data[0];
+    const value = row.data[row.assignment];
     if (typeof value === "number") {
       if (!acc[row.assignment]) acc[row.assignment] = [];
       acc[row.assignment].push(value);
@@ -79,18 +93,31 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupKeys = Object.keys(groups);
-  if (groupKeys.length !== 2) {
+  // Find treatment column (first non-baseline)
+  const treatmentColumn = Object.keys(groups)
+    .map(Number)
+    .find((col) => col !== baselineColumn);
+
+  if (
+    treatmentColumn === undefined ||
+    !groups[baselineColumn] ||
+    !groups[treatmentColumn]
+  ) {
     return 0;
-    // throw new Error("Wilcoxon Rank-Sum test requires exactly two groups");
   }
 
   // Check if either group is empty
-  if (groups[0].length === 0 || groups[1].length === 0) {
+  if (
+    groups[baselineColumn].length === 0 ||
+    groups[treatmentColumn].length === 0
+  ) {
     return 0;
   }
 
-  const allValues = [...groups[0], ...groups[1]].sort((a, b) => a - b);
+  const allValues = [
+    ...groups[baselineColumn],
+    ...groups[treatmentColumn],
+  ].sort((a, b) => a - b);
 
   const ranks = new Map<number, number>();
   allValues.forEach((value, index) => {
@@ -114,12 +141,19 @@ const wilcoxonRankSum: TestStatisticFunction = (data: DataRow[]) => {
     }
   });
 
-  const rankSum = groups[0].reduce((sum, value) => sum + ranks.get(value)!, 0);
+  // Use baseline group for rank sum
+  const rankSum = groups[baselineColumn].reduce(
+    (sum, value) => sum + ranks.get(value)!,
+    0
+  );
 
   return rankSum;
 };
 
-const differenceInMedians: TestStatisticFunction = (data: DataRow[]) => {
+const differenceInMedians: TestStatisticFunction = (
+  data: DataRow[],
+  baselineColumn: number
+) => {
   if (!data || data.length === 0) return 0;
 
   const groups = data.reduce((acc, row) => {
@@ -132,13 +166,30 @@ const differenceInMedians: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMedians = Object.values(groups).map((group) => safeMedian(group));
+  // Find treatment column (first non-baseline)
+  const treatmentColumn = Object.keys(groups)
+    .map(Number)
+    .find((col) => col !== baselineColumn);
 
-  return groupMedians.length >= 2 ? groupMedians[1] - groupMedians[0] : 0;
+  if (
+    treatmentColumn === undefined ||
+    !groups[baselineColumn] ||
+    !groups[treatmentColumn]
+  ) {
+    return 0;
+  }
+
+  const baselineMedian = safeMedian(groups[baselineColumn]);
+  const treatmentMedian = safeMedian(groups[treatmentColumn]);
+
+  return treatmentMedian - baselineMedian;
 };
 
-const ratioOfVariances: TestStatisticFunction = (data: DataRow[]) => {
-  if (!data || data.length === 0) return 1; // Return 1 for equal variances
+const ratioOfVariances: TestStatisticFunction = (
+  data: DataRow[],
+  baselineColumn: number
+) => {
+  if (!data || data.length === 0) return 1;
 
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
@@ -150,15 +201,25 @@ const ratioOfVariances: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupVariances = Object.values(groups).map((group) =>
-    safeVariance(group)
-  );
+  // Find treatment column (first non-baseline)
+  const treatmentColumn = Object.keys(groups)
+    .map(Number)
+    .find((col) => col !== baselineColumn);
 
-  if (groupVariances.length < 2 || groupVariances[0] === 0) {
+  if (
+    treatmentColumn === undefined ||
+    !groups[baselineColumn] ||
+    !groups[treatmentColumn]
+  ) {
     return 1;
   }
 
-  return groupVariances[1] / groupVariances[0];
+  const baselineVariance = safeVariance(groups[baselineColumn]);
+  const treatmentVariance = safeVariance(groups[treatmentColumn]);
+
+  if (baselineVariance === 0) return 1;
+
+  return treatmentVariance / baselineVariance;
 };
 
 const fStatistic: TestStatisticFunction = (data: DataRow[]) => {
@@ -243,8 +304,11 @@ const betweenGroupVariance: TestStatisticFunction = (data: DataRow[]) => {
   return totalGroups > 1 ? betweenGroupSS / (totalGroups - 1) : 0;
 };
 
-const ratioOfMeans: TestStatisticFunction = (data: DataRow[]) => {
-  if (!data || data.length === 0) return 1; // Return 1 for equal means
+const ratioOfMeans: TestStatisticFunction = (
+  data: DataRow[],
+  baselineColumn: number
+) => {
+  if (!data || data.length === 0) return 1;
 
   const groups = data.reduce((acc, row) => {
     if (row.assignment === null) return acc;
@@ -256,13 +320,25 @@ const ratioOfMeans: TestStatisticFunction = (data: DataRow[]) => {
     return acc;
   }, {} as Record<number, number[]>);
 
-  const groupMeans = Object.values(groups).map((group) => safeMean(group));
+  // Find treatment column (first non-baseline)
+  const treatmentColumn = Object.keys(groups)
+    .map(Number)
+    .find((col) => col !== baselineColumn);
 
-  if (groupMeans.length < 2 || groupMeans[0] === 0) {
+  if (
+    treatmentColumn === undefined ||
+    !groups[baselineColumn] ||
+    !groups[treatmentColumn]
+  ) {
     return 1;
   }
 
-  return groupMeans[1] / groupMeans[0];
+  const baselineMean = safeMean(groups[baselineColumn]);
+  const treatmentMean = safeMean(groups[treatmentColumn]);
+
+  if (baselineMean === 0) return 1;
+
+  return treatmentMean / baselineMean;
 };
 
 export const testStatistics: Record<
@@ -274,42 +350,49 @@ export const testStatistics: Record<
     function: differenceInMeans,
     supportsMultipleTreatments: false,
     alwaysPositive: false,
+    usesBaseline: true,
   },
   [ExperimentalTestStatistic.WilcoxonRankSum]: {
     name: "Wilcoxon Rank-Sum",
     function: wilcoxonRankSum,
     supportsMultipleTreatments: false,
     alwaysPositive: true,
+    usesBaseline: true,
   },
   [ExperimentalTestStatistic.DifferenceInMedians]: {
     name: "Difference in Medians",
     function: differenceInMedians,
     supportsMultipleTreatments: false,
     alwaysPositive: false,
+    usesBaseline: true,
   },
   [ExperimentalTestStatistic.RatioOfVariances]: {
     name: "Ratio of Variances",
     function: ratioOfVariances,
     supportsMultipleTreatments: false,
     alwaysPositive: true,
+    usesBaseline: true,
   },
   [ExperimentalTestStatistic.FStatistic]: {
     name: "F-Statistic",
     function: fStatistic,
     supportsMultipleTreatments: true,
     alwaysPositive: true,
+    usesBaseline: false,
   },
   [ExperimentalTestStatistic.BetweenGroupVariance]: {
     name: "Between-Group Variance",
     function: betweenGroupVariance,
     supportsMultipleTreatments: true,
     alwaysPositive: true,
+    usesBaseline: false,
   },
   [ExperimentalTestStatistic.RatioOfMeans]: {
     name: "Ratio of Means",
     function: ratioOfMeans,
     supportsMultipleTreatments: false,
     alwaysPositive: true,
+    usesBaseline: true,
   },
 };
 

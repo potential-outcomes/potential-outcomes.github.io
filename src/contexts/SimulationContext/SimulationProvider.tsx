@@ -5,6 +5,7 @@ import React, {
   useRef,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 import { simulationReducer } from "./reducer";
 import * as actions from "./actions";
@@ -24,6 +25,8 @@ import {
   shuffleRowAssignments,
   filterValidRows,
   speedToDuration,
+  dataSnapshotsMatch,
+  getCompleteRows,
 } from "./utils";
 import { testStatistics } from "./testStatistics";
 import { INITIAL_STATE, DEFAULT_COLUMN_COLORS } from "./constants";
@@ -114,7 +117,9 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   const setBlock = dispatchWithResult(actions.setBlock);
   const renameColumn = dispatchWithResult(actions.renameColumn);
   const addColumn = dispatchWithResult(actions.addColumn);
+  const setBaselineColumn = dispatchWithResult(actions.setBaselineColumn);
   const removeColumn = dispatchWithResult(actions.removeColumn);
+  const setBlockingEnabled = dispatchWithResult(actions.setBlockingEnabled);
   const setSelectedTestStatistic = dispatchWithResult(
     actions.setSelectedTestStatistic
   );
@@ -142,11 +147,18 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
   const pauseSimulation = dispatchWithResult(actions.pauseSimulation);
 
+  const blockingEnabledRef = useRef(state.data.userData.blockingEnabled);
+
+  // Update ref when value changes
+  useEffect(() => {
+    blockingEnabledRef.current = state.data.userData.blockingEnabled;
+  }, [state.data.userData.blockingEnabled]);
+
   const simulate = useCallback((data: DataRow[]): SimulationResult => {
     const validData = filterValidRows(data);
     const shuffledData = shuffleRowAssignments(
       validData,
-      state.settings.blockingEnabled
+      blockingEnabledRef.current // Read from ref instead
     );
     return new SimulationResult(shuffledData);
   }, []);
@@ -272,7 +284,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   useEffect(() => {
     const newObservedStatistic = testStatistics[
       state.settings.selectedTestStatistic
-    ].function(state.data.userData.rows);
+    ].function(state.data.userData.rows, state.data.userData.baselineColumn);
 
     dispatch(actions.setObservedStatistic(newObservedStatistic));
 
@@ -287,6 +299,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
     }
   }, [
     state.data.userData.rows,
+    state.data.userData.baselineColumn,
     state.settings.selectedTestStatistic,
     state.settings.pValueType,
     state.results.simulationResults,
@@ -459,6 +472,8 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       rows,
       columns,
       colorStack: defaultColors.slice(columns.length),
+      baselineColumn: 0,
+      blockingEnabled: false,
     };
   };
 
@@ -468,6 +483,31 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       document.removeEventListener("paste", handlePaste);
     };
   }, [handlePaste]);
+
+  const simulationDataMatchesCurrent = useMemo(() => {
+    if (state.results.simulationResults.length === 0) {
+      return true;
+    }
+    if (!state.results.simulationDataSnapshot) {
+      return false;
+    }
+    const currentCompleteRows = getCompleteRows(state.data.userData.rows);
+    const currentSnapshot = {
+      rows: currentCompleteRows,
+      baselineColumn: state.data.userData.baselineColumn,
+      blockingEnabled: state.data.userData.blockingEnabled,
+    };
+    return dataSnapshotsMatch(
+      state.results.simulationDataSnapshot,
+      currentSnapshot
+    );
+  }, [
+    state.results.simulationResults.length,
+    state.results.simulationDataSnapshot,
+    state.data.userData,
+    state.data.userData.baselineColumn,
+    state.data.userData.blockingEnabled,
+  ]);
 
   const contextValue: SimulationContextType = {
     data: {
@@ -483,6 +523,8 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       renameColumn,
       addColumn,
       removeColumn,
+      setBaselineColumn,
+      setBlockingEnabled,
     },
     settings: {
       ...state.settings,
@@ -497,7 +539,10 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       pauseSimulation,
       clearSimulationData,
     },
-    results: state.results,
+    results: {
+      ...state.results, // This is SimulationResultsState
+      simulationDataMatchesCurrent,
+    },
     history: {
       ...state.history,
       canUndo: state.past.length > 0,
