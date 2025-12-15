@@ -128,22 +128,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   const clearSimulationData = dispatchWithResult(actions.clearSimulationData);
   const undo = dispatchWithResult(actions.undo);
   const redo = dispatchWithResult(actions.redo);
-  const startSimulation = dispatchWithResult(actions.startSimulation, [
-    {
-      check: () => {
-        const rows = state.data.userData.rows;
-        const incompleteRows = rows
-          .slice(0, -1)
-          .filter(
-            (row) =>
-              row.data.some((cell: any) => cell === null) ||
-              row.assignment === null
-          );
-        return incompleteRows.length > 0;
-      },
-      message: "Ignoring incomplete rows.",
-    },
-  ]);
+  const startSimulation = dispatchWithResult(actions.startSimulation);
 
   const pauseSimulation = dispatchWithResult(actions.pauseSimulation);
 

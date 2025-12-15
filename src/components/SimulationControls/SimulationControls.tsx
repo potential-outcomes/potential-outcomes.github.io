@@ -96,7 +96,10 @@ export const SimulationControls: React.FC = () => {
       return { icon: <Icons.Pause size={5} />, text: "Pause" };
     } else if (!simulationResults || simulationResults.length === 0) {
       return { icon: <Icons.Play size={5} />, text: "Play" };
-    } else if (simulationResults.length < totalSimulations && simulationDataMatchesCurrent) {
+    } else if (
+      simulationResults.length < totalSimulations &&
+      simulationDataMatchesCurrent
+    ) {
       return { icon: <Icons.Continue size={5} />, text: "Continue" };
     } else {
       return { icon: <Icons.RewindPlay size={5} />, text: "Restart" };
@@ -226,7 +229,6 @@ export const SimulationControls: React.FC = () => {
             {icon}
             <span>{text}</span>
           </button>
-          <ActionResultFeedback actionResult={simulationActionResult} />
         </div>
 
         <div className="flex-1 flex flex-col gap-2">
@@ -240,6 +242,7 @@ export const SimulationControls: React.FC = () => {
           <ActionResultFeedback actionResult={clearActionResult} />
         </div>
       </div>
+      <ActionResultFeedback actionResult={simulationActionResult} />
 
       {/* Speed (unchanged) */}
       <div className="space-y-2">

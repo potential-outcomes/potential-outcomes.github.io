@@ -402,6 +402,28 @@ export const simulationReducer = (
         return { ...state, error: setError("Simulation is already running") };
       }
 
+      // Check for incomplete rows (excluding the last row which is typically empty for adding new data)
+      const rows = state.data.userData.rows;
+      const incompleteRowIndices: number[] = [];
+      rows.slice(0, -1).forEach((row, index) => {
+        if (row.data.some((cell) => cell === null) || row.assignment === null) {
+          incompleteRowIndices.push(index + 1); // +1 because rows are 1-indexed for users
+        }
+      });
+
+      if (incompleteRowIndices.length > 0) {
+        const rowText =
+          incompleteRowIndices.length === 1
+            ? `Row ${incompleteRowIndices[0]} has`
+            : `Rows ${incompleteRowIndices.join(", ")} have`;
+        return {
+          ...state,
+          error: setError(
+            `Cannot start simulation with incomplete rows. ${rowText} incomplete data.`
+          ),
+        };
+      }
+
       const completeRows = getCompleteRows(state.data.userData.rows);
 
       if (completeRows.length < 2) {
