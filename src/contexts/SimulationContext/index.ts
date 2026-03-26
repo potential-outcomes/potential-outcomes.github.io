@@ -19,6 +19,8 @@ export * from './types';
 
 export {
   emptyRow,
+  newRowId,
+  SIMULATION_DUMMY_ROW_ID,
   shuffleArray,
   filterValidRows,
   calculatePValue,

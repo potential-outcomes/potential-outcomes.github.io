@@ -5,6 +5,7 @@ import {
   PValueType,
   ExperimentalTestStatistic,
 } from "./types";
+import { newRowId } from "./utils";
 
 const BASE_DELAY = 1500;
 
@@ -18,6 +19,7 @@ export const DEFAULT_COLUMN_COLORS = [
 const DEFAULT_USER_DATA = {
   rows: [
     {
+      id: newRowId(),
       data: [null, null],
       assignment: null,
       block: null,
@@ -42,6 +44,7 @@ export const INITIAL_STATE: SimulationState = {
     emptyUserData: () => ({ success: false, error: "Not implemented" }),
     addRow: () => ({ success: false, error: "Not implemented" }),
     deleteRow: () => ({ success: false, error: "Not implemented" }),
+    reorderRows: () => ({ success: false, error: "Not implemented" }),
     updateCell: () => ({ success: false, error: "Not implemented" }),
     setAssignment: () => ({ success: false, error: "Not implemented" }),
     setBlock: () => ({ success: false, error: "Not implemented" }),

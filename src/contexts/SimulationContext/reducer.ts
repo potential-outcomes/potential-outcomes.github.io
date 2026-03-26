@@ -1,4 +1,5 @@
 // potential-outcomes/src/contexts/SimulationContext/reducer.ts
+import { arrayMove } from "@dnd-kit/sortable";
 import {
   SimulationState,
   SimulationAction,
@@ -12,6 +13,7 @@ import {
   validateTotalSimulations,
   validatePValueType,
   getCompleteRows,
+  ensureUserDataRowIds,
 } from "./utils";
 import { ExperimentalTestStatistic, testStatistics } from "./testStatistics";
 import { INITIAL_STATE } from "./constants";
@@ -35,7 +37,11 @@ export const simulationReducer = (
       if (!action.payload) {
         return { ...state, error: setError("User data payload is required") };
       }
-      return { ...state, ...updateHistory(action.payload), error: null };
+      return {
+        ...state,
+        ...updateHistory(ensureUserDataRowIds(action.payload)),
+        error: null,
+      };
 
     case "RESET_USER_DATA":
       const initialUserData: UserDataState = INITIAL_STATE.data.userData;
@@ -53,10 +59,9 @@ export const simulationReducer = (
 
     case "EMPTY_USER_DATA":
       const emptyRows = state.data.userData.rows.map((row) => ({
+        ...row,
         data: state.data.userData.columns.map(() => null),
-        assignment: row.assignment,
         block: null,
-        assignmentOriginalIndex: row.assignmentOriginalIndex,
       }));
       return {
         ...state,
@@ -96,6 +101,37 @@ export const simulationReducer = (
         ...updateHistory({ ...state.data.userData, rows: updatedRows }),
         error: null,
       };
+
+    case "REORDER_ROWS": {
+      const { activeIndex, overIndex } = action.payload;
+      const rows = state.data.userData.rows;
+      if (rows.length < 2) {
+        return state;
+      }
+      const maxMovable = rows.length - 2;
+      if (
+        activeIndex < 0 ||
+        activeIndex > maxMovable ||
+        overIndex < 0 ||
+        overIndex > maxMovable
+      ) {
+        return {
+          ...state,
+          error: setError("Invalid row reorder indices"),
+        };
+      }
+      if (activeIndex === overIndex) {
+        return state;
+      }
+      const prefix = rows.slice(0, -1);
+      const reorderedPrefix = arrayMove(prefix, activeIndex, overIndex);
+      const newRows = [...reorderedPrefix, rows[rows.length - 1]];
+      return {
+        ...state,
+        ...updateHistory({ ...state.data.userData, rows: newRows }),
+        error: null,
+      };
+    }
 
     case "UPDATE_CELL": {
       const { rowIndex, columnIndex, value } = action.payload;

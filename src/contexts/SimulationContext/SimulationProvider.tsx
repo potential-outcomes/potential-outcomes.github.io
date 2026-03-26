@@ -27,6 +27,7 @@ import {
   speedToDuration,
   dataSnapshotsMatch,
   getCompleteRows,
+  newRowId,
 } from "./utils";
 import { testStatistics } from "./testStatistics";
 import { INITIAL_STATE, DEFAULT_COLUMN_COLORS } from "./constants";
@@ -112,6 +113,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   ]);
 
   const deleteRow = dispatchWithResult(actions.deleteRow);
+  const reorderRows = dispatchWithResult(actions.reorderRows);
   const updateCell = dispatchWithResult(actions.updateCell);
   const setAssignment = dispatchWithResult(actions.setAssignment);
   const setBlock = dispatchWithResult(actions.setBlock);
@@ -434,7 +436,13 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
           }
         }
       });
-      return { data, assignment, block: null, assignmentOriginalIndex: index };
+      return {
+        id: newRowId(),
+        data,
+        assignment,
+        block: null,
+        assignmentOriginalIndex: index,
+      };
     });
 
     // Step 10: Validation
@@ -447,6 +455,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
     // Add empty row for new entries
     rows.push({
+      id: newRowId(),
       data: Array(columns.length).fill(null),
       assignment: null,
       block: null,
@@ -502,6 +511,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       emptyUserData,
       addRow,
       deleteRow,
+      reorderRows,
       updateCell,
       setAssignment,
       setBlock,

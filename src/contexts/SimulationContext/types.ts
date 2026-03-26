@@ -53,6 +53,7 @@ export interface SimulationDataContext {
   emptyUserData: () => void;
   addRow: () => void;
   deleteRow: (index: number) => void;
+  reorderRows: (activeIndex: number, overIndex: number) => void;
   updateCell: (
     rowIndex: number,
     columnIndex: number,
@@ -123,6 +124,10 @@ export type SimulationAction =
   | { type: "EMPTY_USER_DATA" }
   | { type: "ADD_ROW" }
   | { type: "DELETE_ROW"; payload: number }
+  | {
+      type: "REORDER_ROWS";
+      payload: { activeIndex: number; overIndex: number };
+    }
   | {
       type: "UPDATE_CELL";
       payload: { rowIndex: number; columnIndex: number; value: number | null };

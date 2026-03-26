@@ -31,35 +31,31 @@ export const deleteRow = (index: number): SimulationAction => ({
   payload: index,
 });
 
+export const reorderRows = (activeIndex: number, overIndex: number): SimulationAction => ({
+  type: "REORDER_ROWS",
+  payload: { activeIndex, overIndex },
+});
+
 export const updateCell = (
   rowIndex: number,
   columnIndex: number,
-  value: number | null
+  value: number | null,
 ): SimulationAction => ({
   type: "UPDATE_CELL",
   payload: { rowIndex, columnIndex, value },
 });
 
-export const setAssignment = (
-  rowIndex: number,
-  assignment: number | null
-): SimulationAction => ({
+export const setAssignment = (rowIndex: number, assignment: number | null): SimulationAction => ({
   type: "SET_ASSIGNMENT",
   payload: { rowIndex, assignment },
 });
 
-export const setBlock = (
-  rowIndex: number,
-  block: string | null
-): SimulationAction => ({
+export const setBlock = (rowIndex: number, block: string | null): SimulationAction => ({
   type: "SET_BLOCK",
   payload: { rowIndex, block },
 });
 
-export const renameColumn = (
-  index: number,
-  newName: string
-): SimulationAction => ({
+export const renameColumn = (index: number, newName: string): SimulationAction => ({
   type: "RENAME_COLUMN",
   payload: { index, newName },
 });
@@ -80,7 +76,7 @@ export const setSimulationSpeed = (speed: number): SimulationAction => ({
 });
 
 export const setSelectedTestStatistic = (
-  statistic: ExperimentalTestStatistic
+  statistic: ExperimentalTestStatistic,
 ): SimulationAction => ({
   type: "SET_SELECTED_TEST_STATISTIC",
   payload: statistic,
@@ -108,9 +104,7 @@ export const clearSimulationData = (): SimulationAction => ({
   type: "CLEAR_SIMULATION_DATA",
 });
 
-export const setSimulationResults = (
-  results: SimulationResult[]
-): SimulationAction => ({
+export const setSimulationResults = (results: SimulationResult[]): SimulationAction => ({
   type: "SET_SIMULATION_RESULTS",
   payload: results,
 });

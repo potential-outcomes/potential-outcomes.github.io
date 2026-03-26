@@ -5,16 +5,36 @@ import {
   ActionResult,
   SimulationResult,
   UserDataSnapshot,
+  UserDataState,
 } from "./types";
 import { ExperimentalTestStatistic, testStatistics } from "./testStatistics";
 
-// Utility function to create a new row
-export const emptyRow = (columnCount: number): DataRow => ({
+/** Stable id for the synthetic trailing row shown during simulation playback. */
+export const SIMULATION_DUMMY_ROW_ID = "__simulation_dummy_row__";
+
+export const newRowId = (): string =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `row-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+/** @param idOverride optional stable id (e.g. {@link SIMULATION_DUMMY_ROW_ID}). */
+export const emptyRow = (columnCount: number, idOverride?: string): DataRow => ({
+  id: idOverride ?? newRowId(),
   data: Array(columnCount).fill(null),
   assignment: null,
   block: null,
   assignmentOriginalIndex: null,
 });
+
+export function ensureUserDataRowIds(userData: UserDataState): UserDataState {
+  return {
+    ...userData,
+    rows: userData.rows.map((row) => {
+      const id = (row as DataRow & { id?: string }).id;
+      return id != null && id !== "" ? row : { ...row, id: newRowId() };
+    }),
+  };
+}
 
 export const calculateColumnAverages = (rows: DataRow[]): (number | null)[] => {
   const groups = rows.reduce((acc, row, index) => {
