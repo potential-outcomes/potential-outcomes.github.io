@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   useSimulationSettings,
   useSimulationData,
@@ -43,6 +43,14 @@ export const SimulationControls: React.FC = () => {
     useState<ActionResult | null>(null);
   const [clearActionResult, setClearActionResult] =
     useState<ActionResult | null>(null);
+
+  const hasIncompleteRows = useMemo(
+    () =>
+      userData.rows
+        .slice(0, -1)
+        .some((row) => row.data.some((cell) => cell === null) || row.assignment === null),
+    [userData.rows]
+  );
 
   const isSelectedTestStatisticAlwaysPositive =
     testStatistics[selectedTestStatistic].alwaysPositive;
@@ -134,6 +142,17 @@ export const SimulationControls: React.FC = () => {
     setSelectedTestStatistic,
   ]);
 
+  useEffect(() => {
+    if (
+      simulationActionResult?.error?.startsWith(
+        "Cannot start simulation with incomplete rows."
+      ) &&
+      !hasIncompleteRows
+    ) {
+      setSimulationActionResult(null);
+    }
+  }, [simulationActionResult, hasIncompleteRows]);
+
   const handleSimulationAction = async () => {
     if (
       (simulationResults && simulationResults.length >= totalSimulations) ||
@@ -160,22 +179,27 @@ export const SimulationControls: React.FC = () => {
         >
           Test Statistic:
         </label>
-        <select
-          id="testStatistic"
-          value={selectedTestStatistic}
-          onChange={(e) =>
-            setSelectedTestStatistic(
-              e.target.value as ExperimentalTestStatistic
-            )
-          }
-          className="mt-2 md:mt-0 flex-1 border rounded px-3 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary"
-        >
-          {availableTestStatistics.map(([key, { name }]) => (
-            <option key={key} value={key}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <div className="mt-2 md:mt-0 flex-1 relative">
+          <select
+            id="testStatistic"
+            value={selectedTestStatistic}
+            onChange={(e) =>
+              setSelectedTestStatistic(
+                e.target.value as ExperimentalTestStatistic
+              )
+            }
+            className="w-full border rounded pl-3 pr-10 py-2 text-light-text-primary dark:text-dark-text-primary bg-light-background dark:bg-dark-background focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary appearance-none"
+          >
+            {availableTestStatistics.map(([key, { name }]) => (
+              <option key={key} value={key}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-light-text-secondary dark:text-dark-text-secondary">
+            <Icons.ChevronDown size={5} />
+          </div>
+        </div>
       </div>
 
       {/* Number of trials */}

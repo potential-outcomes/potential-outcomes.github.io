@@ -14,7 +14,7 @@ export default function TopBar({ links }: TopBarProps) {
   return (
     <nav className="bg-light-background dark:bg-dark-background shadow-md">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-12">
           <ul className="flex space-x-6">
             {links.map((link) => (
               <li key={link.href}>
@@ -29,10 +29,10 @@ export default function TopBar({ links }: TopBarProps) {
           </ul>
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background hover:bg-light-primary-dark dark:hover:bg-dark-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-light-primary-dark dark:focus:ring-dark-primary-light focus:ring-opacity-50"
+            className="p-1.5 rounded-full bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background hover:bg-light-primary-dark dark:hover:bg-dark-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-light-primary-dark dark:focus:ring-dark-primary-light focus:ring-opacity-50"
             aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           >
-            {theme === 'light' ? <Icons.Moon size={6} /> : <Icons.Sun size={6}/>}
+            {theme === 'light' ? <Icons.Moon size={5} /> : <Icons.Sun size={5} />}
           </button>
         </div>
       </div>

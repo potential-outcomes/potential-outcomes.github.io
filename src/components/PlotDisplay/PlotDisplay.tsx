@@ -16,6 +16,7 @@ import {
   useLatestStatisticBarRef,
   testStatistics,
 } from "@/contexts/SimulationContext";
+import { getStatisticUnderNull } from "@/contexts/SimulationContext/testStatistics";
 import { ThresholdFilter, Direction } from "./ThresholdFilter";
 
 const Plot = dynamic<PlotParams>(() => import("react-plotly.js"), {
@@ -26,11 +27,13 @@ const StatDisplay: React.FC<{
   title: string;
   value: string | number;
   isStale?: boolean;
-}> = React.memo(({ title, value, isStale = false }) => (
+  /** Lining + tabular figures for stable digit width (progress, counts) */
+  valueNumeric?: boolean;
+}> = React.memo(({ title, value, isStale = false, valueNumeric = false }) => (
   <div
     className={`
       bg-light-background-secondary dark:bg-dark-background-tertiary 
-      p-3 rounded-lg flex flex-col gap-1
+      p-3 rounded-lg flex flex-col gap-1 w-full h-full
       transition-opacity duration-200
       ${isStale ? "opacity-50" : "opacity-100"}
     `}
@@ -38,7 +41,11 @@ const StatDisplay: React.FC<{
     <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">
       {title}
     </h4>
-    <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
+    <p
+      className={`text-lg font-bold text-light-text-primary dark:text-dark-text-primary ${
+        valueNumeric ? "lining-nums tabular-nums" : ""
+      }`}
+    >
       {value}
     </p>
   </div>
@@ -50,6 +57,37 @@ interface Bin {
   start: number;
   end: number;
   count: number;
+}
+
+/** Round to `sigFigs` significant figures (gentler than 1–2–5 decade snapping). */
+function roundToSignificantFigures(value: number, sigFigs: number): number {
+  if (!isFinite(value) || value === 0) return value;
+  const x = Math.abs(value);
+  const exp = Math.floor(Math.log10(x));
+  const scale = Math.pow(10, sigFigs - 1 - exp);
+  const rounded = Math.round(x * scale) / scale;
+  return value < 0 ? -rounded : rounded;
+}
+
+/** Smallest value ≥ `value` with at most `sigFigs` significant digits (stable y-axis max). */
+function ceilToSignificantFigures(value: number, sigFigs: number): number {
+  if (!isFinite(value) || value <= 0) return 1;
+  const x = Math.abs(value);
+  const exp = Math.floor(Math.log10(x));
+  const scale = Math.pow(10, sigFigs - 1 - exp);
+  return Math.ceil(x * scale - Number.EPSILON) / scale;
+}
+
+const BIN_WIDTH_SIG_FIGS = 1;
+const Y_AXIS_SIG_FIGS = 2;
+const BIN_WIDTH_SCALE = 1.25;
+
+function roundHistogramBinWidthGentle(width: number): number {
+  return roundToSignificantFigures(width * BIN_WIDTH_SCALE, BIN_WIDTH_SIG_FIGS);
+}
+
+function roundYAxisMaxGentle(value: number): number {
+  return ceilToSignificantFigures(value, Y_AXIS_SIG_FIGS);
 }
 
 export const PlotDisplay: React.FC = () => {
@@ -69,6 +107,16 @@ export const PlotDisplay: React.FC = () => {
   // Determine if results are stale
   const isStale = simulationResults.length > 0 && !simulationDataMatchesCurrent;
 
+  const statisticUnderNull = useMemo(
+    () =>
+      getStatisticUnderNull(
+        userData.rows,
+        userData.baselineColumn,
+        selectedTestStatistic
+      ),
+    [userData.rows, userData.baselineColumn, selectedTestStatistic]
+  );
+
   // Parse threshold values
   const threshold1Value = useMemo(() => {
     const parsed = parseFloat(threshold1Input);
@@ -80,7 +128,9 @@ export const PlotDisplay: React.FC = () => {
       simulationData: number[],
       observedStat: number,
       theme: string,
-      isStale: boolean
+      isStale: boolean,
+      /** Stabilizes bin width during incremental simulation (Scott's n^(1/3) term). */
+      expectedSimulations: number
     ) => {
       const isPositiveOnly =
         testStatistics[selectedTestStatistic].alwaysPositive;
@@ -91,7 +141,9 @@ export const PlotDisplay: React.FC = () => {
 
       if (!simulationData?.length) {
         // Initialize empty plot with appropriate scale
-        const binSize = observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
+        const rawBin =
+          observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
+        const binSize = roundHistogramBinWidthGentle(rawBin);
         const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
         const dummyMin = isPositiveOnly ? 0 : -defaultRange;
         const dummyMax = defaultRange;
@@ -140,21 +192,27 @@ export const PlotDisplay: React.FC = () => {
 
       // Calculate bin size using Scott's rule: bin width = 3.49 × σ / n^(1/3)
       const n = simulationData.length;
+      const scottN = Math.max(n, Math.max(1, expectedSimulations));
       const mean = simulationData.reduce((sum, val) => sum + val, 0) / n;
       const variance =
         simulationData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
         n;
       const standardDeviation = Math.sqrt(variance);
 
-      // Apply Scott's rule: bin width = 3.49 × σ / n^(1/3)
+      // Apply Scott's rule; use max(actual, expected) for n^(1/3) so width doesn't drift each trial
       let binSize =
         standardDeviation > 0
-          ? (3.49 * standardDeviation) / Math.pow(n, 1 / 3)
+          ? (3.49 * standardDeviation) / Math.pow(scottN, 1 / 3)
           : hasSpread
           ? (dataMax - dataMin) / 10 // Fallback: use 10 bins if no variance
           : 1; // Fallback: use bin size of 1 if no spread
 
       // Ensure minimum bin size to avoid division by zero or too many bins
+      if (binSize <= 0 || !isFinite(binSize)) {
+        binSize = hasSpread ? (dataMax - dataMin) / 10 : 1;
+      }
+
+      binSize = roundHistogramBinWidthGentle(binSize);
       if (binSize <= 0 || !isFinite(binSize)) {
         binSize = hasSpread ? (dataMax - dataMin) / 10 : 1;
       }
@@ -229,7 +287,7 @@ export const PlotDisplay: React.FC = () => {
         maxCount,
       };
     },
-    [isSimulating, simulationResults.length, selectedTestStatistic]
+    [selectedTestStatistic]
   );
 
   const simulationData = useMemo(
@@ -242,7 +300,13 @@ export const PlotDisplay: React.FC = () => {
 
   const { plotData, minResult, maxResult, binSize, bins, maxCount } = useMemo(
     () =>
-      calculatePlotData(simulationData, observedStatistic || 0, theme, isStale),
+      calculatePlotData(
+        simulationData,
+        observedStatistic || 0,
+        theme,
+        isStale,
+        totalSimulations
+      ),
     [
       calculatePlotData,
       simulationData,
@@ -251,18 +315,50 @@ export const PlotDisplay: React.FC = () => {
       isSimulating,
       simulationResults.length,
       isStale,
+      totalSimulations,
     ]
   );
 
-  // Add threshold lines to plot data if thresholds are set
+  const displayYMax = useMemo(
+    () => roundYAxisMaxGentle(Math.max(maxCount + 1, 1)),
+    [maxCount]
+  );
+
+  // Add threshold line and stat-under-null reference to plot data
   const plotDataWithThresholds = useMemo(() => {
     const thresholdLineOpacity = isStale ? 0.4 : 0.8;
+    const nullStatLineOpacity = isStale ? 0.35 : 0.85;
     const traces = [...plotData];
+
+    if (
+      statisticUnderNull !== null &&
+      statisticUnderNull !== undefined &&
+      Number.isFinite(statisticUnderNull)
+    ) {
+      const statUnderNullLine: Data = {
+        x: [statisticUnderNull, statisticUnderNull],
+        y: [0, displayYMax],
+        type: "scatter",
+        mode: "lines",
+        line: {
+          color:
+            theme === "light"
+              ? `rgba(22, 163, 74, ${nullStatLineOpacity})`
+              : `rgba(74, 222, 128, ${nullStatLineOpacity})`,
+          width: 3,
+          dash: "dash",
+        },
+        name: "Stat under null",
+        showlegend: true,
+        legendgroup: "stat-under-null",
+      };
+      traces.push(statUnderNullLine);
+    }
 
     if (threshold1Value !== null) {
       const thresholdLine1: Data = {
         x: [threshold1Value, threshold1Value],
-        y: [0, maxCount + 1],
+        y: [0, displayYMax],
         type: "scatter",
         mode: "lines",
         line: {
@@ -281,14 +377,44 @@ export const PlotDisplay: React.FC = () => {
     }
 
     return traces;
-  }, [plotData, threshold1Value, maxCount, theme, isStale]);
+  }, [
+    plotData,
+    threshold1Value,
+    displayYMax,
+    theme,
+    isStale,
+    statisticUnderNull,
+  ]);
+
+  const histogramXMin = minResult - 0.5 * binSize;
+  const histogramXMax =
+    bins.length > 0
+      ? bins[bins.length - 1].end + 0.5 * binSize
+      : maxResult + 0.5 * binSize;
+
+  const statUnderNullFinite =
+    statisticUnderNull !== null &&
+    statisticUnderNull !== undefined &&
+    Number.isFinite(statisticUnderNull)
+      ? statisticUnderNull
+      : null;
+
+  const halfBin = 0.5 * binSize;
+  const xAxisRangeMin =
+    statUnderNullFinite !== null
+      ? Math.min(histogramXMin, statUnderNullFinite - halfBin)
+      : histogramXMin;
+  const xAxisRangeMax =
+    statUnderNullFinite !== null
+      ? Math.max(histogramXMax, statUnderNullFinite + halfBin)
+      : histogramXMax;
 
   const layout: Partial<Layout> = useMemo(
     () => ({
       autosize: true,
       xaxis: {
         title: testStatistics[selectedTestStatistic].name,
-        range: [minResult - 0.5 * binSize, maxResult + 0.5 * binSize],
+        range: [xAxisRangeMin, xAxisRangeMax],
         tickmode: "auto",
         nticks: 10,
         tickfont: { color: theme === "light" ? "black" : "white" },
@@ -300,7 +426,7 @@ export const PlotDisplay: React.FC = () => {
         nticks: 10,
         tickfont: { color: theme === "light" ? "black" : "white" },
         titlefont: { color: theme === "light" ? "black" : "white" },
-        range: [0, maxCount + 1],
+        range: [0, displayYMax],
       },
       bargap: 0,
       showlegend: true,
@@ -321,7 +447,13 @@ export const PlotDisplay: React.FC = () => {
       plot_bgcolor: "rgba(0,0,0,0)",
       margin: { l: 45, r: 35, b: 32, t: 0 },
     }),
-    [selectedTestStatistic, theme, minResult, maxResult, binSize, maxCount]
+    [
+      selectedTestStatistic,
+      theme,
+      displayYMax,
+      xAxisRangeMin,
+      xAxisRangeMax,
+    ]
   );
 
   const addBinRangeAttributes = useCallback(() => {
@@ -639,7 +771,7 @@ export const PlotDisplay: React.FC = () => {
               data={plotDataWithThresholds}
               layout={layout}
               config={{ responsive: true, autosizable: true }}
-              style={{ width, height: height * 0.85 }}
+              style={{ width, height: height * 0.95 }}
               onAfterPlot={() => {
                 addBinRangeAttributes();
                 updateBarColors();
@@ -653,8 +785,39 @@ export const PlotDisplay: React.FC = () => {
         </AutoSizer>
       </div>
 
+      {/* Statistic label + selected test name (full-width thin row) */}
+      {/* <div
+        className={`
+          mb-2 w-full
+          bg-light-background-secondary dark:bg-dark-background-tertiary
+          py-2 px-3 rounded-lg flex flex-row items-center justify-start gap-2 min-w-0
+          transition-opacity duration-200
+          ${isStale ? "opacity-50" : "opacity-100"}
+        `}
+      >
+        <span className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+          Statistic
+        </span>
+        <span className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary truncate">
+          {testStatistics[selectedTestStatistic].name}
+        </span>
+      </div> */}
+
       {/* Cards row below plot, above threshold filter */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4 mb-4 items-stretch">
+        {/* Stat under null (reference under H₀) */}
+        <div className="flex-1">
+          <StatDisplay
+            title="Stat under null"
+            value={
+              statisticUnderNull !== null && statisticUnderNull !== undefined
+                ? statisticUnderNull.toFixed(3)
+                : "—"
+            }
+            isStale={isStale}
+          />
+        </div>
+
         {/* Observed Statistic Card */}
         <div className="flex-1">
           <StatDisplay
@@ -678,6 +841,7 @@ export const PlotDisplay: React.FC = () => {
                 : "—"
             }
             isStale={isStale}
+            valueNumeric
           />
         </div>
       </div>

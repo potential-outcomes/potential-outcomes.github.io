@@ -3,6 +3,7 @@ import {
   useSimulationState,
   useSimulationResults,
 } from "@/contexts/SimulationContext";
+import { Icons } from "../common/Icons";
 
 export type Direction = "leq" | "geq";
 
@@ -88,24 +89,29 @@ export const ThresholdFilter: React.FC<ThresholdFilterProps> = ({
 
         {/* Conditions - stacked vertically */}
         <div className="flex items-center gap-1">
-          <select
-            value={threshold1Direction}
-            onChange={handleThreshold1DirectionChange}
-            className="px-2 py-2 rounded bg-light-background-primary dark:bg-dark-background-secondary 
-                     text-light-text-primary dark:text-dark-text-primary
-                     border border-light-border dark:border-dark-border
-                     focus:outline-none focus:ring-2 focus:ring-blue-500
-                     text-xl font-semibold"
-          >
-            <option value="leq">≤</option>
-            <option value="geq">≥</option>
-          </select>
+          <div className="relative">
+            <select
+              value={threshold1Direction}
+              onChange={handleThreshold1DirectionChange}
+              className="px-2 py-1 pr-9 rounded bg-light-background-primary dark:bg-dark-background-secondary 
+                       text-light-text-primary dark:text-dark-text-primary
+                       border border-light-border dark:border-dark-border
+                       focus:outline-none focus:ring-2 focus:ring-blue-500
+                       text-base font-semibold appearance-none"
+            >
+              <option value="leq">≤</option>
+              <option value="geq">≥</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-light-text-secondary dark:text-dark-text-secondary">
+              <Icons.ChevronDown size={5} />
+            </div>
+          </div>
 
           <input
             type="text"
             value={threshold1Input}
             onChange={handleThreshold1InputChange}
-            className="px-2 py-2 rounded bg-light-background-primary dark:bg-dark-background-secondary 
+            className="px-2 py-1 rounded bg-light-background-primary dark:bg-dark-background-secondary 
                      text-light-text-primary dark:text-dark-text-primary
                      border border-light-border dark:border-dark-border
                      focus:outline-none focus:ring-2 focus:ring-blue-500
@@ -118,7 +124,7 @@ export const ThresholdFilter: React.FC<ThresholdFilterProps> = ({
           =
         </span>
 
-        <span className="flex items-center gap-1 text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">
+        <span className="flex items-center gap-1 text-2xl font-bold lining-nums tabular-nums text-light-text-primary dark:text-dark-text-primary">
           {threshold1Input && simulationResults.length > 0 ? (
             <>
               <span>{count}</span>
@@ -132,7 +138,7 @@ export const ThresholdFilter: React.FC<ThresholdFilterProps> = ({
         </span>
 
         {threshold1Input && simulationResults.length > 0 && (
-          <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+          <span className="text-sm lining-nums tabular-nums text-light-text-secondary dark:text-dark-text-secondary">
             ({percentage.toFixed(2)}%)
           </span>
         )}

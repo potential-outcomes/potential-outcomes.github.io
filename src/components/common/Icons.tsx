@@ -1,6 +1,5 @@
 // components/Icons.tsx
 import React from 'react';
-import PropTypes from 'prop-types';
 
 interface IconProps {
   size?: number;
@@ -32,13 +31,6 @@ const SvgIcon: React.FC<IconProps & React.SVGProps<SVGSVGElement>> = ({
     {children}
   </svg>
 );
-
-SvgIcon.propTypes = {
-  size: PropTypes.number,
-  color: PropTypes.string,
-  className: PropTypes.string,
-  onClick: PropTypes.func,
-};
 
 export const Undo: React.FC<IconProps> = (props) => (
   <SvgIcon viewBox="0 0 24 24" {...props}>
@@ -80,6 +72,29 @@ export const Add: React.FC<IconProps> = (props) => (
     <path d="M12 5v14M5 12h14" />
   </SvgIcon>
 );
+
+/** Vertical drag handle (six dots). Uses fill; pass `color` for stroke-less rendering. */
+export const GripVertical: React.FC<IconProps> = (props) => {
+  const { color = "currentColor", size = 4, className = "", ...rest } = props;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill={color}
+      stroke="none"
+      className={`h-${size} w-${size} ${className}`}
+      aria-hidden
+      {...rest}
+    >
+      <circle cx="9" cy="5" r="1.5" />
+      <circle cx="15" cy="5" r="1.5" />
+      <circle cx="9" cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9" cy="19" r="1.5" />
+      <circle cx="15" cy="19" r="1.5" />
+    </svg>
+  );
+};
 
 export const Moon: React.FC<IconProps> = (props) => (
   <SvgIcon viewBox="0 0 24 24" {...props}>
@@ -244,6 +259,12 @@ export const CheckCircle: React.FC<IconProps> = (props) => (
   </SvgIcon>
 );
 
+export const ChevronDown: React.FC<IconProps> = (props) => (
+  <SvgIcon viewBox="0 0 24 24" {...props}>
+    <path d="M6 9l6 6 6-6" />
+  </SvgIcon>
+);
+
 export const Icons = {
   Undo,
   Redo,
@@ -251,6 +272,7 @@ export const Icons = {
   Collapse,
   Close,
   Add,
+  GripVertical,
   Moon,
   Sun,
   Upload,
@@ -270,7 +292,8 @@ export const Icons = {
   Blocking,
   AlertTriangle,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ChevronDown
 };
 
 export default Icons;
