@@ -904,9 +904,6 @@ export default function DataInput() {
     [dataToDisplay, simulationResults.length],
   );
 
-  /** Show row drag handles whenever reordering is meaningful; disable actual drag while simulating. */
-  const sortableDragEnabled = useMemo(() => userData.rows.length >= 2, [userData.rows.length]);
-
   /** Only movable rows (all except the fixed trailing row). Last row must not be in `items` or
    *  vertical sort still animates it upward when dragging another row to the bottom. */
   const sortableItemIds = useMemo(() => {
@@ -1075,17 +1072,11 @@ export default function DataInput() {
             />
           )}
           <div className="flex items-stretch w-full rounded-t-lg h-10 flex-shrink-0 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
-            <div
-              className={`flex-shrink-0 flex items-center font-medium text-light-text-secondary dark:text-dark-text-secondary w-14 ${
-                sortableDragEnabled ? "justify-start pl-0.5" : "justify-center"
-              }`}
-            >
-              {sortableDragEnabled ?
-                <div className="flex items-center gap-1">
-                  <span className="inline-flex w-4 shrink-0" aria-hidden />
-                  <div className="min-w-[1.5rem] flex justify-center">#</div>
-                </div>
-              : "#"}
+            <div className="flex-shrink-0 flex items-center justify-start pl-0.5 font-medium text-light-text-secondary dark:text-dark-text-secondary w-14">
+              <div className="flex items-center gap-1">
+                <span className="inline-flex w-4 shrink-0" aria-hidden />
+                <div className="min-w-[1.5rem] flex justify-center">#</div>
+              </div>
             </div>
             <div className="flex-grow flex">
               {userData.columns.map((column, index) => (

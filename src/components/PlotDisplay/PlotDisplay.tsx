@@ -80,7 +80,7 @@ function ceilToSignificantFigures(value: number, sigFigs: number): number {
 
 const BIN_WIDTH_SIG_FIGS = 1;
 const Y_AXIS_SIG_FIGS = 2;
-const BIN_WIDTH_SCALE = 1.25;
+const BIN_WIDTH_SCALE = 1.3;
 
 function roundHistogramBinWidthGentle(width: number): number {
   return roundToSignificantFigures(width * BIN_WIDTH_SCALE, BIN_WIDTH_SIG_FIGS);
@@ -144,9 +144,13 @@ export const PlotDisplay: React.FC = () => {
         const rawBin =
           observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
         const binSize = roundHistogramBinWidthGentle(rawBin);
-        const defaultRange = 2 * Math.max(5 * binSize, Math.abs(observedStat));
-        const dummyMin = isPositiveOnly ? 0 : -defaultRange;
-        const dummyMax = defaultRange;
+        const halfWidth = Math.max(5 * binSize, Math.abs(observedStat));
+        const dummyMin = isPositiveOnly
+          ? 0
+          : observedStat - 2 * halfWidth;
+        const dummyMax = isPositiveOnly
+          ? 2 * Math.max(5 * binSize, Math.abs(observedStat))
+          : observedStat + 2 * halfWidth;
         const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
 
         const dummyBins: Bin[] = Array.from({ length: totalBins }, (_, i) => ({
@@ -230,7 +234,7 @@ export const PlotDisplay: React.FC = () => {
         const maxValue = Math.max(effectiveMax, observedStat);
         adjustedMax = Math.ceil(maxValue / binSize) * binSize;
       } else {
-        const minValue = Math.min(effectiveMin, -observedStat);
+        const minValue = Math.min(effectiveMin, observedStat);
         const maxValue = Math.max(effectiveMax, observedStat);
         adjustedMin = Math.floor(minValue / binSize) * binSize;
         adjustedMax = Math.ceil(maxValue / binSize) * binSize;
@@ -348,7 +352,7 @@ export const PlotDisplay: React.FC = () => {
           width: 3,
           dash: "dash",
         },
-        name: "Stat under null",
+        name: "Statistic under null",
         showlegend: true,
         legendgroup: "stat-under-null",
       };
@@ -808,7 +812,7 @@ export const PlotDisplay: React.FC = () => {
         {/* Stat under null (reference under H₀) */}
         <div className="flex-1">
           <StatDisplay
-            title="Stat under null"
+            title="Statistic under null"
             value={
               statisticUnderNull !== null && statisticUnderNull !== undefined
                 ? statisticUnderNull.toFixed(3)
