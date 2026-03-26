@@ -26,7 +26,8 @@ body {
   }
 
   .text-shadow-inherit {
-    text-shadow: 0 0 1px;
+    /* Softer than 0 0 1px same-color — still helps contrast on busy overlays */
+    text-shadow: 0 0 1px color-mix(in srgb, currentColor 35%, transparent);
   }
 
   .text-shadow-inherit * {

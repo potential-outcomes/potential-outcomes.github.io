@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { SimulationProvider } from "@/contexts/SimulationContext";
+import { SimulationProvider, useSimulationState } from "@/contexts/SimulationContext";
 import DataInput from "@/components/DataInput/DataInput";
 import PlotDisplay from "@/components/PlotDisplay/PlotDisplay";
 import SimulationControls from "@/components/SimulationControls/SimulationControls";
@@ -33,32 +33,50 @@ const FeedbackButton = () => (
   </a>
 );
 
+const SimulationLayout: React.FC = () => {
+  const { userData } = useSimulationState();
+  const numCols = userData.columns.length;
+
+  const leftPct =
+    numCols >= 4 ? "54%"
+    : numCols >= 3 ? "50%"
+    : "47%";
+  const rightPct =
+    numCols >= 4 ? "46%"
+    : numCols >= 3 ? "50%"
+    : "53%";
+
+  return (
+    <div className="flex flex-col min-h-screen pt-3 pb-4 px-1 sm:px-2 md:px-3 lg:px-4">
+      <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-[calc(100vh-5rem)] items-stretch">
+        {/* Left Column: Data Entry */}
+        <div className="flex-shrink-0 w-full flex flex-col" style={{ flexBasis: leftPct }}>
+          <Card>
+            <DataInput />
+          </Card>
+        </div>
+
+        {/* Right Column: Controls + Plot */}
+        <div className="flex-shrink-0 w-full flex flex-col gap-4" style={{ flexBasis: rightPct }}>
+          <Card>
+            <SimulationControls />
+          </Card>
+          <Card className="flex flex-col flex-grow max-h-[600px]">
+            <div className="flex-grow">
+              <PlotDisplay />
+            </div>
+          </Card>
+        </div>
+      </div>
+      <FeedbackButton />
+    </div>
+  );
+};
+
 const SimulationPage: React.FC = () => {
   return (
     <SimulationProvider>
-      <div className="flex flex-col min-h-screen py-3 px-1 sm:px-2 md:px-3 lg:px-4">
-        <div className="flex flex-col lg:flex-row gap-4 flex-grow h-[calc(100vh-6rem)] items-stretch">
-          {/* Left Column: Data Entry */}
-          <div className="flex-shrink w-full lg:w-1/2 flex flex-col">
-            <Card>
-              <DataInput />
-            </Card>
-          </div>
-
-          {/* Right Column: Controls + Plot */}
-          <div className="flex-shrink w-full lg:w-1/2 flex flex-col gap-4">
-            <Card>
-              <SimulationControls />
-            </Card>
-            <Card className="flex flex-col flex-grow max-h-[600px]">
-              <div className="flex-grow">
-                <PlotDisplay />
-              </div>
-            </Card>
-          </div>
-        </div>
-        <FeedbackButton />
-      </div>
+      <SimulationLayout />
     </SimulationProvider>
   );
 };
