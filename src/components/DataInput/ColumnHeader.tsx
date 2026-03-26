@@ -17,7 +17,7 @@ interface ColumnHeaderProps {
   totalColumns: number;
   onNavigation?: (
     direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
-    columnIndex: number
+    columnIndex: number,
   ) => void;
 }
 
@@ -162,11 +162,7 @@ export function ColumnHeader({
             {value}
           </span>
           {removable && !disabled && (
-            <Tooltip
-              content="Delete column"
-              position="bottom"
-              className="w-5 h-5"
-            >
+            <Tooltip content="Delete column" position="bottom" className="w-5 h-5">
               <button
                 onClick={handleRemove}
                 className={`ml-1 ${color} hover:!text-light-error dark:hover:!text-dark-error focus:outline-none`}

@@ -33,14 +33,14 @@ const DataControls: React.FC<DataControlsProps> = ({
   `;
 
   return (
-    <div className="flex justify-between items-center w-full m-1">
+    <div className="flex justify-between items-center w-full mb-1.5">
       <div className="flex items-center space-x-1">
         {/* <ApplyEffectButton disabled={disabled} /> */}
         <button
           type="button"
           onClick={disabled ? undefined : toggleBlocking}
           className={`
-            flex items-center space-x-2 px-1 rounded-md
+            flex items-center space-x-1 px-1 rounded-md
             focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200
             ${
               isBlockingEnabled
@@ -52,7 +52,7 @@ const DataControls: React.FC<DataControlsProps> = ({
           disabled={disabled}
         >
           <Icons.Blocking size={4} />
-          <span>
+          <span className="text-sm">
             {isBlockingEnabled ? "Blocking Enabled" : "Blocking Disabled"}
           </span>
         </button>
@@ -76,7 +76,7 @@ const DataControls: React.FC<DataControlsProps> = ({
           </button>
         </Tooltip> */}
 
-        <Tooltip content="Undo (Cmd+Z / Ctrl+Z)">
+        <Tooltip content="Undo">
           <button
             type="button"
             title="Undo"
@@ -87,7 +87,7 @@ const DataControls: React.FC<DataControlsProps> = ({
             <Icons.Undo size={4} />
           </button>
         </Tooltip>
-        <Tooltip content="Redo (Cmd+Shift+Z / Ctrl+Y)">
+        <Tooltip content="Redo">
           <button
             type="button"
             title="Redo"

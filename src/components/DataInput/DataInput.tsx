@@ -1,7 +1,24 @@
 // DataInput.tsx
 "use client";
 
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DraggableAttributes } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   useSimulationData,
   useSimulationState,
@@ -13,11 +30,13 @@ import {
   emptyRow,
   speedToDuration,
   useLatestStatisticBarRef,
+  SIMULATION_DUMMY_ROW_ID,
 } from "@/contexts/SimulationContext";
 import { Icons } from "../common/Icons";
 import { ColumnHeader } from "./ColumnHeader";
 import { motion } from "framer-motion";
 import { Overlay } from "./Overlay";
+import { releaseOverlaySliderX } from "./overlaySliderMotion";
 import DataControls from "./DataControls";
 import InputCell from "./InputCell";
 import { Flipper, Flipped } from "react-flip-toolkit";
@@ -36,12 +55,9 @@ const ColumnAverages: React.FC<ColumnAveragesProps> = ({
   columnColors,
   showBlocks,
 }) => (
-  <div className="flex flex-col bg-light-background-secondary dark:bg-dark-background-secondary border-t-2 border-light-primary dark:border-dark-primary">
-    <div className="flex items-stretch h-10">
-      <div
-        className="flex-shrink-0 flex items-center justify-center font-medium"
-        style={{ width: "4rem" }}
-      >
+  <div className="flex flex-col bg-light-background-secondary dark:bg-dark-background-secondary border-light-primary dark:border-dark-primary">
+    <div className="flex items-stretch h-6">
+      <div className="flex-shrink-0 flex items-center justify-center font-medium text-sm w-14">
         Avg
       </div>
       <div className="flex-grow flex">
@@ -50,28 +66,23 @@ const ColumnAverages: React.FC<ColumnAveragesProps> = ({
             key={index}
             className={`flex-1 flex items-center justify-center font-medium ${columnColors[index]}`}
           >
-            {average !== null ? (
+            {average !== null ?
               <>
                 <span className="mr-1">
                   x̄<sub>{index + 1}</sub>=
                 </span>
                 {average.toFixed(2)}
               </>
-            ) : (
-              "--"
-            )}
+            : "--"}
           </div>
         ))}
       </div>
       {showBlocks && <div className="w-24 flex-shrink-0" />}
       <div className="w-14 flex-shrink-0" />
     </div>
-    <div className="flex items-stretch h-10 -mt-2">
-      <div
-        className="flex-shrink-0 flex items-center justify-center font-medium"
-        style={{ width: "4rem" }}
-      >
-        SD
+    <div className="flex items-stretch h-6">
+      <div className="flex-shrink-0 flex items-center justify-center font-medium text-sm w-14">
+        Std Dev
       </div>
       <div className="flex-grow flex">
         {standardDeviations.map((stdev, index) => (
@@ -79,16 +90,14 @@ const ColumnAverages: React.FC<ColumnAveragesProps> = ({
             key={index}
             className={`flex-1 flex items-center justify-center font-medium ${columnColors[index]}`}
           >
-            {stdev !== null ? (
+            {stdev !== null ?
               <>
                 <span className="mr-1">
                   s<sub>{index + 1}</sub>=
                 </span>
                 {stdev.toFixed(2)}
               </>
-            ) : (
-              "--"
-            )}
+            : "--"}
           </div>
         ))}
       </div>
@@ -101,11 +110,7 @@ const ColumnAverages: React.FC<ColumnAveragesProps> = ({
 interface TableRowProps {
   row: DataRow;
   index: number;
-  updateCell: (
-    rowIndex: number,
-    columnIndex: number,
-    value: number | null
-  ) => void;
+  updateCell: (rowIndex: number, columnIndex: number, value: number | null) => void;
   setAssignment: (rowIndex: number, assignment: number | null) => void;
   setBlock: (rowIndex: number, block: string | null) => void;
   addRow: () => void;
@@ -123,9 +128,16 @@ interface TableRowProps {
   onNavigation: (
     direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
     rowIndex: number,
-    columnIndex: number
+    columnIndex: number,
   ) => void;
   disableAnimations: boolean;
+  /** FLIP animation for assignment squares (shuffle visualization during simulation only). */
+  assignmentFlipEnabled: boolean;
+  sortableDragHandle?: {
+    attributes: DraggableAttributes;
+    listeners: SyntheticListenerMap | undefined;
+    isDragging: boolean;
+  };
 }
 
 const TableRow: React.FC<TableRowProps> = ({
@@ -148,11 +160,11 @@ const TableRow: React.FC<TableRowProps> = ({
   triggerPhantom,
   onNavigation,
   disableAnimations,
+  assignmentFlipEnabled,
+  sortableDragHandle,
 }) => {
   const assignmentColor =
-    row.assignment !== null
-      ? columns[row.assignment]?.color.replace("text-", "bg-")
-      : "";
+    row.assignment !== null ? columns[row.assignment]?.color.replace("text-", "bg-") : "";
 
   const handleAssignmentIndicatorClick = () => {
     if (isSimulating || isUnactivated) return;
@@ -169,80 +181,98 @@ const TableRow: React.FC<TableRowProps> = ({
 
   return (
     <div
-      className={`flex items-stretch w-full h-12 py-1 bg-light-background dark:bg-dark-background border-b border-light-background-tertiary dark:border-dark-background-tertiary ${
+      className={`flex items-stretch w-full h-10 py-1 bg-light-background dark:bg-dark-background border-b border-light-background-tertiary dark:border-dark-background-tertiary ${
         isUnactivated ? "sticky bottom-0" : ""
       }`}
     >
       <div
-        className="flex items-center justify-center flex-shrink-0 text-light-text-secondary dark:text-dark-text-secondary relative"
-        style={{ width: "4rem" }}
+        className={`flex items-center flex-shrink-0 text-light-text-secondary dark:text-dark-text-secondary relative w-14 ${
+          sortableDragHandle || (isUnactivated && toggleCollapse) ?
+            "justify-start pl-0.5"
+          : "justify-center"
+        }`}
       >
-        {row.assignment !== null && !isUnactivated && !disableAnimations && (
-          <Flipped flipId={row.assignmentOriginalIndex || index}>
-            <div
-              className={`absolute w-8 h-8 rounded-md ${assignmentColor} opacity-30 cursor-pointer hover:opacity-50 transition-opacity`}
-              onClick={handleAssignmentIndicatorClick}
-              style={{ pointerEvents: "auto" }}
-            />
-          </Flipped>
-        )}
-        {row.assignment !== null && !isUnactivated && disableAnimations && (
-          <div
-            className={`absolute w-8 h-8 rounded-md ${assignmentColor} opacity-30 cursor-pointer hover:opacity-50 transition-opacity`}
-            onClick={handleAssignmentIndicatorClick}
-            style={{ pointerEvents: "auto" }}
-          />
-        )}
-        {isUnactivated && toggleCollapse ? (
-          <button
-            onClick={toggleCollapse}
-            className="focus:outline-none hover:opacity-80 transition-opacity relative z-10"
-            aria-label={isCollapsed ? "Expand rows" : "Collapse rows"}
-            disabled={isSimulating}
-          >
-            {isCollapsed ? (
-              <Icons.Expand size={4} />
-            ) : (
-              <Icons.Collapse size={4} />
+        <div className="flex items-center gap-1">
+          {sortableDragHandle && (
+            <button
+              type="button"
+              className={`touch-none shrink-0 rounded p-0.5 z-20 focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary ${
+                isSimulating ?
+                  "text-light-text-tertiary/50 dark:text-dark-text-tertiary/50 cursor-not-allowed"
+                : "text-light-text-tertiary hover:text-light-text-secondary dark:text-dark-text-tertiary dark:hover:text-dark-text-secondary cursor-grab active:cursor-grabbing"
+              }`}
+              aria-label="Drag to reorder row"
+              disabled={isSimulating}
+              {...sortableDragHandle.listeners}
+              {...sortableDragHandle.attributes}
+            >
+              <Icons.GripVertical size={3} />
+            </button>
+          )}
+          {!sortableDragHandle && isUnactivated && toggleCollapse ?
+            <span className="inline-flex w-4 shrink-0" aria-hidden />
+          : null}
+          <div className="relative flex min-w-[1.5rem] items-center justify-center">
+            {row.assignment !== null && !isUnactivated && assignmentFlipEnabled && (
+              <Flipped flipId={row.assignmentOriginalIndex || index}>
+                <div
+                  className={`absolute z-[100] w-8 h-8 rounded-md ${assignmentColor} opacity-30 cursor-pointer hover:opacity-50 transition-opacity`}
+                  onClick={handleAssignmentIndicatorClick}
+                  style={{ pointerEvents: "auto" }}
+                />
+              </Flipped>
             )}
-          </button>
-        ) : (
-          <span
-            className={`relative z-10 ${
-              row.assignment === null && !isSimulating
-                ? "cursor-pointer hover:opacity-80 transition-opacity"
-                : ""
-            }`}
-            style={{
-              pointerEvents: row.assignment !== null ? "none" : "auto",
-            }}
-            onClick={
-              row.assignment === null && !isSimulating
-                ? handleAssignmentIndicatorClick
-                : undefined
+            {row.assignment !== null && !isUnactivated && !assignmentFlipEnabled && (
+              <div
+                className={`absolute w-8 h-8 rounded-md ${assignmentColor} opacity-30 cursor-pointer hover:opacity-50 transition-opacity`}
+                onClick={handleAssignmentIndicatorClick}
+                style={{ pointerEvents: "auto" }}
+              />
+            )}
+            {isUnactivated && toggleCollapse ?
+              <button
+                onClick={toggleCollapse}
+                className="focus:outline-none hover:opacity-80 transition-opacity relative z-10"
+                aria-label={isCollapsed ? "Expand rows" : "Collapse rows"}
+                disabled={isSimulating}
+              >
+                {isCollapsed ?
+                  <Icons.Expand size={4} />
+                : <Icons.Collapse size={4} />}
+              </button>
+            : <span
+                className={`relative z-10 ${
+                  row.assignment === null && !isSimulating ?
+                    "cursor-pointer hover:opacity-80 transition-opacity"
+                  : ""
+                }`}
+                style={{
+                  pointerEvents: row.assignment !== null ? "none" : "auto",
+                }}
+                onClick={
+                  row.assignment === null && !isSimulating ?
+                    handleAssignmentIndicatorClick
+                  : undefined
+                }
+              >
+                {index + 1}
+              </span>
             }
-          >
-            {index + 1}
-          </span>
-        )}
+          </div>
+        </div>
       </div>
 
       <div className="flex-grow h-full z-0">
         <Overlay
           assignment={row.assignment}
-          setAssignment={(assignment) =>
-            !isSimulating && setAssignment(index, assignment)
-          }
+          setAssignment={(assignment) => !isSimulating && setAssignment(index, assignment)}
+          rowId={row.id}
           children={row.data.map((cellValue, cellIndex) => (
             <InputCell
               key={cellIndex}
               value={cellValue}
-              onChange={(value) =>
-                !isSimulating && updateCell(index, cellIndex, value)
-              }
-              delayedPlaceholder={
-                row.assignment === cellIndex ? columns[cellIndex].name : "?"
-              }
+              onChange={(value) => !isSimulating && updateCell(index, cellIndex, value)}
+              delayedPlaceholder={row.assignment === cellIndex ? columns[cellIndex].name : "?"}
               disabled={isSimulating}
               collectionPoint={collectionPoint}
               isSimulating={isSimulating}
@@ -267,9 +297,7 @@ const TableRow: React.FC<TableRowProps> = ({
           <input
             type="text"
             value={row.block || ""}
-            onChange={(e) =>
-              !isSimulating && setBlock(index, e.target.value || null)
-            }
+            onChange={(e) => !isSimulating && setBlock(index, e.target.value || null)}
             onKeyDown={(e) => {
               if (isSimulating) return;
               const input = e.currentTarget;
@@ -284,7 +312,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 if (index > 0) {
                   const blockKey = `block-${index - 1}`;
                   const targetElement = document.querySelector(
-                    `[data-cell-id="${blockKey}"]`
+                    `[data-cell-id="${blockKey}"]`,
                   ) as HTMLInputElement;
                   if (targetElement) {
                     targetElement.focus();
@@ -295,7 +323,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 if (index < totalRows - 1) {
                   const blockKey = `block-${index + 1}`;
                   const targetElement = document.querySelector(
-                    `[data-cell-id="${blockKey}"]`
+                    `[data-cell-id="${blockKey}"]`,
                   ) as HTMLInputElement;
                   if (targetElement) {
                     targetElement.focus();
@@ -308,7 +336,7 @@ const TableRow: React.FC<TableRowProps> = ({
                   if (columns.length > 0) {
                     const cellKey = `input-${index}-${columns.length - 1}`;
                     const targetElement = document.querySelector(
-                      `[data-cell-id="${cellKey}"]`
+                      `[data-cell-id="${cellKey}"]`,
                     ) as HTMLInputElement;
                     if (targetElement) {
                       targetElement.focus();
@@ -323,7 +351,7 @@ const TableRow: React.FC<TableRowProps> = ({
                     if (columns.length > 0) {
                       const cellKey = `input-${index}-${columns.length - 1}`;
                       const targetElement = document.querySelector(
-                        `[data-cell-id="${cellKey}"]`
+                        `[data-cell-id="${cellKey}"]`,
                       ) as HTMLInputElement;
                       if (targetElement) {
                         targetElement.focus();
@@ -354,7 +382,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 if (index < totalRows - 1) {
                   const cellKey = `input-${index + 1}-0`;
                   const targetElement = document.querySelector(
-                    `[data-cell-id="${cellKey}"]`
+                    `[data-cell-id="${cellKey}"]`,
                   ) as HTMLInputElement;
                   if (targetElement) {
                     targetElement.focus();
@@ -367,7 +395,7 @@ const TableRow: React.FC<TableRowProps> = ({
                 if (columns.length > 0) {
                   const cellKey = `input-${index}-${columns.length - 1}`;
                   const targetElement = document.querySelector(
-                    `[data-cell-id="${cellKey}"]`
+                    `[data-cell-id="${cellKey}"]`,
                   ) as HTMLInputElement;
                   if (targetElement) {
                     targetElement.focus();
@@ -385,7 +413,7 @@ const TableRow: React.FC<TableRowProps> = ({
       )}
 
       <div className="flex items-center justify-center w-14 flex-shrink-0">
-        {isUnactivated ? (
+        {isUnactivated ?
           <button
             onClick={addRow}
             className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
@@ -394,8 +422,7 @@ const TableRow: React.FC<TableRowProps> = ({
           >
             <Icons.Add size={4} />
           </button>
-        ) : (
-          <button
+        : <button
             onClick={() => !isSimulating && deleteRow(index)}
             className="text-light-text-tertiary hover:text-light-error dark:text-dark-text-tertiary dark:hover:text-dark-error focus:outline-none"
             aria-label="Delete row"
@@ -403,8 +430,32 @@ const TableRow: React.FC<TableRowProps> = ({
           >
             <Icons.Close size={4} />
           </button>
-        )}
+        }
       </div>
+    </div>
+  );
+};
+
+/** Keep a stable row wrapper type across "last row" transitions to preserve overlay animation continuity. */
+const SortableTableRow: React.FC<TableRowProps & { sortableDisabled?: boolean }> = ({
+  sortableDisabled = false,
+  ...props
+}) => {
+  const { row, isSimulating } = props;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+    disabled: isSimulating || sortableDisabled ? { draggable: true, droppable: true } : false,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    position: "relative",
+    zIndex: isDragging ? 2 : undefined,
+  };
+  const dragHandle = sortableDisabled ? undefined : { attributes, listeners, isDragging };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <TableRow {...props} sortableDragHandle={dragHandle} />
     </div>
   );
 };
@@ -415,6 +466,7 @@ export default function DataInput() {
   const {
     addRow,
     deleteRow,
+    reorderRows,
     updateCell,
     setAssignment,
     setBlock,
@@ -426,13 +478,22 @@ export default function DataInput() {
     setUserData,
   } = useSimulationData();
 
+  const deleteRowWithOverlayCleanup = useCallback(
+    (index: number) => {
+      const id = userData.rows[index]?.id;
+      if (id) releaseOverlaySliderX(id);
+      deleteRow(index);
+    },
+    [deleteRow, userData.rows],
+  );
+
   const { simulationSpeed } = useSimulationSettings();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [triggerPhantom, setTriggerPhantom] = useState(false);
   const prevSimulationResultsLengthRef = useRef(0);
   const [editingColumnNames, setEditingColumnNames] = useState<boolean[]>(
-    userData.columns.map(() => false)
+    userData.columns.map(() => false),
   );
   const [pulsate, setPulsate] = useState(false);
   const [collectionPoint, setCollectionPoint] = useState({ x: 500, y: 500 });
@@ -444,12 +505,15 @@ export default function DataInput() {
   // Create refs for all input cells
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
+  const dummyRowForSimulation = useMemo(
+    () => emptyRow(userData.columns.length, SIMULATION_DUMMY_ROW_ID),
+    [userData.columns.length],
+  );
+
   const dataToDisplay = useMemo(() => {
     if (isSimulating && simulationResults && simulationResults.length > 0) {
-      const lastSimulationResult =
-        simulationResults[simulationResults.length - 1].rows;
-      const dummyRow = emptyRow(userData.columns.length);
-      return [...lastSimulationResult, dummyRow];
+      const lastSimulationResult = simulationResults[simulationResults.length - 1].rows;
+      return [...lastSimulationResult, dummyRowForSimulation];
     } else {
       return userData.rows;
     }
@@ -458,12 +522,15 @@ export default function DataInput() {
     simulationResults,
     simulationResults.length,
     userData.rows,
+    dummyRowForSimulation,
   ]);
 
   const duration = Math.min(speedToDuration(simulationSpeed) / 850, 0.5);
 
   // Check if animations should be disabled (when speed is at or above 80)
   const disableAnimations = simulationSpeed >= 80;
+
+  const assignmentFlipEnabled = isSimulating && !disableAnimations;
 
   useEffect(() => {
     if (isSimulating && simulationResults) {
@@ -509,9 +576,7 @@ export default function DataInput() {
     if (
       !isSimulating &&
       (userData.rows.length === 0 ||
-        !userData.rows[userData.rows.length - 1].data.some(
-          (cell) => cell === null
-        ))
+        !userData.rows[userData.rows.length - 1].data.some((cell) => cell === null))
     ) {
       addRow();
     }
@@ -527,8 +592,7 @@ export default function DataInput() {
 
   useEffect(() => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop =
-        scrollContainerRef.current.scrollHeight;
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [userData.rows.length]);
 
@@ -571,8 +635,7 @@ export default function DataInput() {
 
         const newData = [...row.data];
         const knownValue = newData[knownColumnIndex] as number;
-        const baselineValue =
-          knownValue - parseFloat(effectSizes[knownColumnIndex] || "0");
+        const baselineValue = knownValue - parseFloat(effectSizes[knownColumnIndex] || "0");
 
         return {
           ...row,
@@ -588,10 +651,7 @@ export default function DataInput() {
     setUserData(newData);
   };
 
-  const handleColumnNameChange = (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleColumnNameChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (isSimulating) return;
     renameColumn(index, e.target.value.slice(0, 20)); // Limit to 20 characters
   };
@@ -599,7 +659,7 @@ export default function DataInput() {
   // Wrapper for header navigation - headers use rowIndex -1
   const handleHeaderNavigation = (
     direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
-    columnIndex: number
+    columnIndex: number,
   ) => {
     handleNavigation(direction, -1, columnIndex);
   };
@@ -614,7 +674,7 @@ export default function DataInput() {
   const handleNavigation = (
     direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
     rowIndex: number,
-    columnIndex: number
+    columnIndex: number,
   ) => {
     let targetRowIndex = rowIndex;
     let targetColumnIndex = columnIndex;
@@ -724,11 +784,7 @@ export default function DataInput() {
         // Reverse zig-zag navigation
         if (targetColumnIndex > 0 && !targetIsBlock) {
           targetColumnIndex = targetColumnIndex - 1;
-        } else if (
-          userData.blockingEnabled &&
-          !targetIsBlock &&
-          targetColumnIndex === 0
-        ) {
+        } else if (userData.blockingEnabled && !targetIsBlock && targetColumnIndex === 0) {
           // At start of row - if blocking enabled, move to previous row's block
           if (targetRowIndex > 0) {
             targetRowIndex = targetRowIndex - 1;
@@ -778,7 +834,7 @@ export default function DataInput() {
       const headerKey = `column-header-${targetColumnIndex}`;
       // Try to find the input first (if in edit mode)
       const headerInput = document.querySelector(
-        `[data-cell-id="${headerKey}"]`
+        `[data-cell-id="${headerKey}"]`,
       ) as HTMLInputElement;
 
       if (headerInput && headerInput.tagName === "INPUT") {
@@ -787,16 +843,14 @@ export default function DataInput() {
         headerInput.select();
       } else {
         // Header is not in edit mode, trigger edit mode by clicking the span
-        const headerSpan = document.querySelector(
-          `[data-cell-id="${headerKey}"]`
-        ) as HTMLElement;
+        const headerSpan = document.querySelector(`[data-cell-id="${headerKey}"]`) as HTMLElement;
         if (headerSpan) {
           // Click to enter edit mode, then focus the input after it appears
           (headerSpan as HTMLElement).click();
           // Wait for the input to appear, then focus and select it
           setTimeout(() => {
             const input = document.querySelector(
-              `[data-cell-id="${headerKey}"]`
+              `[data-cell-id="${headerKey}"]`,
             ) as HTMLInputElement;
             if (input && input.tagName === "INPUT") {
               input.focus();
@@ -805,18 +859,15 @@ export default function DataInput() {
           }, 10);
         } else {
           // Fallback: try to find by column index and click to enter edit mode
-          const headerDiv = document.querySelector(
-            `[data-column-index="${targetColumnIndex}"]`
-          );
+          const headerDiv = document.querySelector(`[data-column-index="${targetColumnIndex}"]`);
           if (headerDiv) {
-            const clickableElement =
-              headerDiv.querySelector("span[data-cell-id]");
+            const clickableElement = headerDiv.querySelector("span[data-cell-id]");
             if (clickableElement) {
               (clickableElement as HTMLElement).click();
               // Wait for the input to appear, then focus and select it
               setTimeout(() => {
                 const input = document.querySelector(
-                  `[data-cell-id="${headerKey}"]`
+                  `[data-cell-id="${headerKey}"]`,
                 ) as HTMLInputElement;
                 if (input && input.tagName === "INPUT") {
                   input.focus();
@@ -829,18 +880,14 @@ export default function DataInput() {
       }
     } else if (targetIsBlock) {
       const blockKey = `block-${targetRowIndex}`;
-      const blockInput = document.querySelector(
-        `[data-cell-id="${blockKey}"]`
-      ) as HTMLInputElement;
+      const blockInput = document.querySelector(`[data-cell-id="${blockKey}"]`) as HTMLInputElement;
       if (blockInput) {
         blockInput.focus();
         blockInput.select();
       }
     } else {
       const cellKey = `input-${targetRowIndex}-${targetColumnIndex}`;
-      const cellInput = document.querySelector(
-        `[data-cell-id="${cellKey}"]`
-      ) as HTMLInputElement;
+      const cellInput = document.querySelector(`[data-cell-id="${cellKey}"]`) as HTMLInputElement;
       if (cellInput) {
         cellInput.focus();
         cellInput.select();
@@ -850,54 +897,116 @@ export default function DataInput() {
 
   const columnAverages = useMemo(
     () => calculateColumnAverages(dataToDisplay),
-    [dataToDisplay, simulationResults.length]
+    [dataToDisplay, simulationResults.length],
   );
   const columnStandardDeviations = useMemo(
     () => calculateColumnStandardDeviations(dataToDisplay),
-    [dataToDisplay, simulationResults.length]
+    [dataToDisplay, simulationResults.length],
+  );
+
+  /** Show row drag handles whenever reordering is meaningful; disable actual drag while simulating. */
+  const sortableDragEnabled = useMemo(() => userData.rows.length >= 2, [userData.rows.length]);
+
+  /** Only movable rows (all except the fixed trailing row). Last row must not be in `items` or
+   *  vertical sort still animates it upward when dragging another row to the bottom. */
+  const sortableItemIds = useMemo(() => {
+    if (dataToDisplay.length <= 1) return [];
+    const shouldIgnoreCollapse = dataToDisplay.length <= 5;
+    if (isCollapsed && !shouldIgnoreCollapse && dataToDisplay.length > 5) {
+      const n = dataToDisplay.length;
+      return [dataToDisplay[0].id, dataToDisplay[1].id, dataToDisplay[n - 2].id];
+    }
+    return dataToDisplay.slice(0, -1).map((r) => r.id);
+  }, [dataToDisplay, isCollapsed]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (isSimulating) return;
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const movable = userData.rows.slice(0, -1);
+      const shouldIgnoreCollapse = dataToDisplay.length <= 5;
+      if (isCollapsed && !shouldIgnoreCollapse && movable.length >= 3) {
+        const subsetIds = [movable[0].id, movable[1].id, movable[movable.length - 1].id];
+        const oldIdx = subsetIds.indexOf(active.id as string);
+        const newIdx = subsetIds.indexOf(over.id as string);
+        if (oldIdx === -1 || newIdx === -1) return;
+
+        // Mirror what dnd-kit previewed: arrayMove on the 3 visible rows only
+        const subsetRows = [movable[0], movable[1], movable[movable.length - 1]];
+        const newSubset = arrayMove(subsetRows, oldIdx, newIdx);
+
+        // Assign the reordered subset back to their positions; hidden rows stay untouched
+        const newMovable = [...movable];
+        newMovable[0] = newSubset[0];
+        newMovable[1] = newSubset[1];
+        newMovable[movable.length - 1] = newSubset[2];
+
+        setUserData({
+          ...userData,
+          rows: [...newMovable, userData.rows[userData.rows.length - 1]],
+        });
+        return;
+      }
+      const movableIds = movable.map((r) => r.id);
+      const oldIndex = movableIds.indexOf(active.id as string);
+      const newIndex = movableIds.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+      reorderRows(oldIndex, newIndex);
+    },
+    [userData, reorderRows, setUserData, isCollapsed, dataToDisplay.length, isSimulating],
   );
 
   const renderRows = useMemo(() => {
     const shouldIgnoreCollapse = dataToDisplay.length <= 5;
 
-    let rows = dataToDisplay.map((row, index) => (
-      <TableRow
-        key={index}
-        row={row}
-        index={index}
-        updateCell={updateCell}
-        setAssignment={setAssignment}
-        setBlock={setBlock}
-        addRow={addRow}
-        deleteRow={deleteRow}
-        isUnactivated={index === dataToDisplay.length - 1}
-        toggleCollapse={
-          index === dataToDisplay.length - 1
-            ? () => setIsCollapsed(!isCollapsed)
-            : undefined
-        }
-        isCollapsed={isCollapsed}
-        columns={userData.columns}
-        showBlocks={userData.blockingEnabled}
-        totalRows={dataToDisplay.length}
-        duration={isSimulating ? duration : 1.0}
-        isSimulating={isSimulating}
-        collectionPoint={collectionPoint}
-        triggerPhantom={triggerPhantom}
-        onNavigation={handleNavigation}
-        disableAnimations={disableAnimations}
-      />
-    ));
+    const rowProps = {
+      updateCell,
+      setAssignment,
+      setBlock,
+      addRow,
+      deleteRow: deleteRowWithOverlayCleanup,
+      isCollapsed,
+      columns: userData.columns,
+      showBlocks: userData.blockingEnabled,
+      totalRows: dataToDisplay.length,
+      duration: isSimulating ? duration : 1.0,
+      isSimulating,
+      collectionPoint,
+      triggerPhantom,
+      onNavigation: handleNavigation,
+      disableAnimations,
+      assignmentFlipEnabled,
+    };
+
+    let rows = dataToDisplay.map((row, index) => {
+      const common = {
+        ...rowProps,
+        row,
+        index,
+        isUnactivated: index === dataToDisplay.length - 1,
+        toggleCollapse:
+          index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined,
+      };
+
+      const isLast = index === dataToDisplay.length - 1;
+      return <SortableTableRow key={row.id} {...common} sortableDisabled={isLast} />;
+    });
 
     if (isCollapsed && !shouldIgnoreCollapse) {
       const expandButton = (
         <div
           key="expand-button"
-          className="flex items-center justify-center h-12 cursor-pointer border-b border-light-background-tertiary dark:border-dark-background-tertiary"
+          className="flex items-center justify-center h-9 cursor-pointer border-b border-light-background-tertiary dark:border-dark-background-tertiary"
           onClick={() => !isSimulating && setIsCollapsed(false)}
         >
           <button
-            className="flex items-center space-x-2 text-light-primary dark:text-dark-primary hover:text-light-primary-dark dark:hover:text-dark-primary-light focus:outline-none transition-colors duration-200"
+            className="flex items-center space-x-2 text-sm text-light-primary dark:text-dark-primary hover:text-light-primary-dark dark:hover:text-dark-primary-light focus:outline-none transition-colors duration-200"
             disabled={isSimulating}
           >
             <Icons.Expand size={4} />
@@ -906,13 +1015,7 @@ export default function DataInput() {
         </div>
       );
 
-      rows = [
-        rows[0],
-        rows[1],
-        expandButton,
-        rows[rows.length - 2],
-        rows[rows.length - 1],
-      ];
+      rows = [rows[0], rows[1], expandButton, rows[rows.length - 2], rows[rows.length - 1]];
     }
 
     return rows;
@@ -923,13 +1026,16 @@ export default function DataInput() {
     userData.blockingEnabled,
     userData.columns,
     addRow,
-    deleteRow,
+    deleteRowWithOverlayCleanup,
     setAssignment,
     setBlock,
     updateCell,
     collectionPoint,
     triggerPhantom,
     disableAnimations,
+    handleNavigation,
+    duration,
+    assignmentFlipEnabled,
   ]);
 
   return (
@@ -946,12 +1052,12 @@ export default function DataInput() {
         disabled={isSimulating}
       />
 
-      <div className="w-full max-w-4xl mx-auto flex flex-col h-[110%] gap-4">
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
         <motion.div
           className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${
-            isSimulating
-              ? "border-2 border-light-secondary dark:border-dark-secondary"
-              : "border-1 border-slate-700/20"
+            isSimulating ?
+              "border-2 border-light-secondary dark:border-dark-secondary"
+            : "border-1 border-slate-700/20"
           }`}
           animate={pulsate ? { scale: [1, 1.002, 1] } : {}}
           transition={{
@@ -964,19 +1070,22 @@ export default function DataInput() {
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.075, 0] }}
               transition={{
-                duration: Math.min(
-                  speedToDuration(simulationSpeed) / 1800,
-                  0.25
-                ),
+                duration: Math.min(speedToDuration(simulationSpeed) / 1800, 0.25),
               }}
             />
           )}
           <div className="flex items-stretch w-full rounded-t-lg h-10 flex-shrink-0 bg-light-background-secondary dark:bg-dark-background-secondary border-b-2 border-light-primary dark:border-dark-primary">
             <div
-              className="flex-shrink-0 flex items-center justify-center font-medium"
-              style={{ width: "4rem" }}
+              className={`flex-shrink-0 flex items-center font-medium text-light-text-secondary dark:text-dark-text-secondary w-14 ${
+                sortableDragEnabled ? "justify-start pl-0.5" : "justify-center"
+              }`}
             >
-              #
+              {sortableDragEnabled ?
+                <div className="flex items-center gap-1">
+                  <span className="inline-flex w-4 shrink-0" aria-hidden />
+                  <div className="min-w-[1.5rem] flex justify-center">#</div>
+                </div>
+              : "#"}
             </div>
             <div className="flex-grow flex">
               {userData.columns.map((column, index) => (
@@ -1009,43 +1118,47 @@ export default function DataInput() {
             </div>
 
             {userData.blockingEnabled && (
-              <div className="w-24 flex-shrink-0 flex items-center px-6 font-medium">
-                Block
-              </div>
+              <div className="w-24 flex-shrink-0 flex items-center px-6 font-medium">Block</div>
             )}
             <div className="flex items-center justify-center w-14 flex-shrink-0">
-              {userData.colorStack.length > 0 ? (
+              <Tooltip content="Add column" position="left">
                 <button
                   onClick={() => !isSimulating && addColumn("New Column")}
-                  className="text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success focus:outline-none"
+                  className={`focus:outline-none ${
+                    userData.colorStack.length > 0 && !isSimulating ?
+                      "text-light-text-tertiary hover:text-light-success dark:text-dark-text-tertiary dark:hover:text-dark-success"
+                    : "invisible"
+                  }`}
                   aria-label="Add column"
-                  disabled={isSimulating}
+                  disabled={userData.colorStack.length === 0 || isSimulating}
                 >
                   <Icons.Add size={4} />
                 </button>
-              ) : (
-                <div className="w-8 flex-shrink-0" />
-              )}
+              </Tooltip>
             </div>
           </div>
 
           <div
             ref={scrollContainerRef}
-            className={`overflow-y-auto flex-grow ${
-              isSimulating ? "select-none" : ""
-            }`}
+            className={`overflow-y-auto flex-grow ${isSimulating ? "select-none" : ""}`}
           >
-            {disableAnimations ? (
-              // Render without Flipper when animations are disabled, but wrap in fragment
+            {dataToDisplay.length > 0 ?
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <SortableContext items={sortableItemIds}>
+                  {!assignmentFlipEnabled ?
+                    <>{renderRows}</>
+                  : <Flipper flipKey={dataToDisplay.map((row) => row.assignment).join("-")}>
+                      {renderRows}
+                    </Flipper>
+                  }
+                </SortableContext>
+              </DndContext>
+            : !assignmentFlipEnabled ?
               <>{renderRows}</>
-            ) : (
-              // Use Flipper for shuffling animations when enabled
-              <Flipper
-                flipKey={dataToDisplay.map((row) => row.assignment).join("-")}
-              >
+            : <Flipper flipKey={dataToDisplay.map((row) => row.assignment).join("-")}>
                 {renderRows}
               </Flipper>
-            )}
+            }
           </div>
           <div className="flex-shrink-0" ref={averagesRef}>
             <ColumnAverages
@@ -1059,18 +1172,12 @@ export default function DataInput() {
           {/* Baseline Selection Row */}
           <div className="flex-shrink-0 bg-light-background-secondary dark:bg-dark-background-secondary">
             <div className="flex items-stretch w-full h-10">
-              <div
-                className="flex-shrink-0 flex items-center justify-center font-medium text-light-text-secondary dark:text-dark-text-secondary text-[13px]"
-                style={{ width: "4rem" }}
-              >
+              <div className="flex-shrink-0 flex items-center justify-center font-medium text-light-text-secondary dark:text-dark-text-secondary text-[13px] w-14">
                 Baseline
               </div>
               <div className="flex-grow flex">
                 {userData.columns.map((column, index) => (
-                  <div
-                    key={index}
-                    className="flex-1 flex items-center justify-center"
-                  >
+                  <div key={index} className="flex-1 flex items-center justify-center">
                     <label
                       className={`flex items-center cursor-pointer ${
                         isSimulating ? "opacity-50 cursor-not-allowed" : ""
@@ -1081,9 +1188,7 @@ export default function DataInput() {
                         name="baseline-column"
                         value={index}
                         checked={userData.baselineColumn === index}
-                        onChange={() =>
-                          !isSimulating && setBaselineColumn(index)
-                        }
+                        onChange={() => !isSimulating && setBaselineColumn(index)}
                         disabled={isSimulating}
                         className="w-4 h-4 accent-light-primary dark:accent-dark-primary cursor-pointer"
                       />
@@ -1091,9 +1196,7 @@ export default function DataInput() {
                   </div>
                 ))}
               </div>
-              {userData.blockingEnabled && (
-                <div className="w-24 flex-shrink-0" />
-              )}
+              {userData.blockingEnabled && <div className="w-24 flex-shrink-0" />}
               <div className="w-14 flex-shrink-0" />
             </div>
           </div>
@@ -1103,10 +1206,7 @@ export default function DataInput() {
         <div className="w-full bg-light-background-secondary dark:bg-dark-background-secondary rounded-lg">
           {/* Effect Sizes Row */}
           <div className="flex items-stretch">
-            <div
-              className="flex-shrink-0 flex items-center justify-center px-1.5 py-3 text-sm text-light-text-secondary dark:text-dark-text-secondary leading-tight"
-              style={{ width: "4rem" }}
-            >
+            <div className="flex-shrink-0 flex items-center justify-center px-1.5 py-3 text-sm text-light-text-secondary dark:text-dark-text-secondary leading-tight w-14">
               <span className="text-center">
                 Effect
                 <br />
@@ -1115,21 +1215,15 @@ export default function DataInput() {
             </div>
             <div className="flex-grow flex pr-14">
               {userData.columns.map((column, index) => (
-                <div
-                  key={index}
-                  className="flex-1 flex items-center justify-center px-2 py-3"
-                >
-                  {index === userData.baselineColumn ? (
+                <div key={index} className="flex-1 flex items-center justify-center px-2 py-3">
+                  {index === userData.baselineColumn ?
                     <div className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary italic">
                       —
                     </div>
-                  ) : (
-                    <input
+                  : <input
                       type="number"
                       value={effectSizes[index] || ""}
-                      onChange={(e) =>
-                        handleEffectSizeChange(index, e.target.value)
-                      }
+                      onChange={(e) => handleEffectSizeChange(index, e.target.value)}
                       onWheel={(e) => (e.target as HTMLElement).blur()}
                       disabled={isSimulating}
                       placeholder="0"
@@ -1137,7 +1231,7 @@ export default function DataInput() {
                         isSimulating ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                     />
-                  )}
+                  }
                 </div>
               ))}
             </div>
@@ -1145,22 +1239,18 @@ export default function DataInput() {
           </div>
 
           {/* Apply Button Row */}
-          <div className="px-4 py-3">
+          <div className="px-4 py-2">
             <Tooltip
-              content={
-                isEffectSizesValid
-                  ? ""
-                  : "Please enter valid effect sizes for all columns"
-              }
+              content={isEffectSizesValid ? "" : "Please enter valid effect sizes for all columns"}
               className="w-full"
             >
               <button
                 onClick={handleFill}
                 disabled={isSimulating || !isEffectSizesValid}
                 className={`w-full px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
-                  isSimulating || !isEffectSizesValid
-                    ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
-                    : "bg-light-primary dark:bg-dark-primary text-white hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:ring-light-primary dark:focus:ring-dark-primary"
+                  isSimulating || !isEffectSizesValid ?
+                    "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                  : "bg-light-primary dark:bg-dark-primary text-white hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:ring-light-primary dark:focus:ring-dark-primary"
                 }`}
               >
                 Apply Effect Sizes To Table
