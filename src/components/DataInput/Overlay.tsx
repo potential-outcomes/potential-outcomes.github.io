@@ -154,9 +154,9 @@ export const Overlay: React.FC<OverlayProps> = ({
   useEffect(() => {
     const cols = Math.max(children.length, 1);
     const target =
-      displayAssignmentIndex === null ?
-        "0%"
-      : `${displayAssignmentIndex * (100 / cols) + 50 / cols}%`;
+      displayAssignmentIndex === null ? "0%" : (
+        `${displayAssignmentIndex * (100 / cols) + 50 / cols}%`
+      );
     const prevAssignment = prevAssignmentRef.current;
     prevAssignmentRef.current = assignment;
 
