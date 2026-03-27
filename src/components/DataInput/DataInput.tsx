@@ -5,16 +5,22 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from "react"
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragOverEvent,
+  DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
+  type Modifier,
 } from "@dnd-kit/core";
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import {
   SortableContext,
   arrayMove,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -31,9 +37,10 @@ import {
   speedToDuration,
   useLatestStatisticBarRef,
   SIMULATION_DUMMY_ROW_ID,
+  remapColumnIndexAfterMove,
 } from "@/contexts/SimulationContext";
 import { Icons } from "../common/Icons";
-import { ColumnHeader } from "./ColumnHeader";
+import { ColumnHeader, type ColumnHeaderProps } from "./ColumnHeader";
 import { motion } from "framer-motion";
 import { Overlay } from "./Overlay";
 import { releaseOverlaySliderX } from "./overlaySliderMotion";
@@ -41,6 +48,31 @@ import DataControls from "./DataControls";
 import InputCell from "./InputCell";
 import { Flipper, Flipped } from "react-flip-toolkit";
 import { Tooltip } from "../common/Tooltip";
+
+/** Column DndContext only: horizontal axis; soft bounds with a little slack past the header row. */
+const COLUMN_DRAG_X_SLACK_PX = 40;
+
+const restrictToHorizontalAxis: Modifier = ({
+  transform,
+  activeNodeRect,
+  containerNodeRect,
+  draggingNodeRect,
+}) => {
+  const y = 0;
+  if (!activeNodeRect || !containerNodeRect) {
+    return { ...transform, y };
+  }
+
+  const dragWidth = draggingNodeRect?.width ?? activeNodeRect.width;
+  const minX = containerNodeRect.left - activeNodeRect.left;
+  const maxX = containerNodeRect.right - activeNodeRect.left - dragWidth;
+  const x = Math.min(
+    Math.max(transform.x, minX - COLUMN_DRAG_X_SLACK_PX),
+    maxX + COLUMN_DRAG_X_SLACK_PX,
+  );
+
+  return { ...transform, x, y };
+};
 
 interface ColumnAveragesProps {
   averages: (number | null)[];
@@ -133,6 +165,8 @@ interface TableRowProps {
   disableAnimations: boolean;
   /** FLIP animation for assignment squares (shuffle visualization during simulation only). */
   assignmentFlipEnabled: boolean;
+  /** Storage column indices in left-to-right display order (for column-drag preview). */
+  columnCellOrder?: number[];
   sortableDragHandle?: {
     attributes: DraggableAttributes;
     listeners: SyntheticListenerMap | undefined;
@@ -161,10 +195,13 @@ const TableRow: React.FC<TableRowProps> = ({
   onNavigation,
   disableAnimations,
   assignmentFlipEnabled,
+  columnCellOrder,
   sortableDragHandle,
 }) => {
   const assignmentColor =
     row.assignment !== null ? columns[row.assignment]?.color.replace("text-", "bg-") : "";
+  const cellIndices = columnCellOrder ?? columns.map((_, cellIndex) => cellIndex);
+  const columnColorsForOverlay = cellIndices.map((i) => columns[i].color);
 
   const handleAssignmentIndicatorClick = () => {
     if (isSimulating || isUnactivated) return;
@@ -267,10 +304,10 @@ const TableRow: React.FC<TableRowProps> = ({
           assignment={row.assignment}
           setAssignment={(assignment) => !isSimulating && setAssignment(index, assignment)}
           rowId={row.id}
-          children={row.data.map((cellValue, cellIndex) => (
+          children={cellIndices.map((cellIndex) => (
             <InputCell
               key={cellIndex}
-              value={cellValue}
+              value={row.data[cellIndex]}
               onChange={(value) => !isSimulating && updateCell(index, cellIndex, value)}
               delayedPlaceholder={row.assignment === cellIndex ? columns[cellIndex].name : "?"}
               disabled={isSimulating}
@@ -288,7 +325,8 @@ const TableRow: React.FC<TableRowProps> = ({
           ))}
           rowIndex={index}
           duration={duration * 0.5}
-          columnColors={columns.map((column) => column.color)}
+          columnColors={columnColorsForOverlay}
+          displayColumnOrder={cellIndices}
         />
       </div>
 
@@ -460,6 +498,51 @@ const SortableTableRow: React.FC<TableRowProps & { sortableDisabled?: boolean }>
   );
 };
 
+type SortableColumnHeaderProps = Omit<ColumnHeaderProps, "sortableDragHandle"> & {
+  column: Column;
+  isSimulating: boolean;
+};
+
+const SortableColumnHeader: React.FC<SortableColumnHeaderProps> = ({
+  column,
+  isSimulating,
+  ...headerProps
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: column.id,
+    disabled: isSimulating ? { draggable: true, droppable: true } : false,
+  });
+  const style: React.CSSProperties = {
+    // With DragOverlay, the source must not use sortable transforms — they fight the overlay and read as a jump.
+    transform: !isSimulating && isDragging ? undefined : CSS.Transform.toString(transform),
+    transition: !isSimulating && isDragging ? undefined : transition,
+    position: "relative",
+    zIndex: isDragging ? 2 : undefined,
+    opacity: !isSimulating && isDragging ? 0 : undefined,
+  };
+  const sortableDragHandle =
+    isSimulating ? undefined : { listeners, setActivatorNodeRef, isDragging };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="min-w-0 flex-1"
+      data-column-index={headerProps.columnIndex}
+      {...attributes}
+    >
+      <ColumnHeader {...headerProps} sortableDragHandle={sortableDragHandle} />
+    </div>
+  );
+};
+
 export default function DataInput() {
   const { userData, isSimulating, simulationResults } = useSimulationState();
 
@@ -473,6 +556,7 @@ export default function DataInput() {
     renameColumn,
     addColumn,
     removeColumn,
+    reorderColumns,
     setBaselineColumn,
     setBlockingEnabled,
     setUserData,
@@ -498,6 +582,11 @@ export default function DataInput() {
   const [pulsate, setPulsate] = useState(false);
   const [collectionPoint, setCollectionPoint] = useState({ x: 500, y: 500 });
   const [effectSizes, setEffectSizes] = useState<{ [key: number]: string }>({});
+  const [columnDragPreview, setColumnDragPreview] = useState<{
+    activeIndex: number;
+    overIndex: number;
+  } | null>(null);
+  const [columnDragOverlayId, setColumnDragOverlayId] = useState<string | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const averagesRef = useRef<HTMLDivElement>(null);
@@ -904,6 +993,37 @@ export default function DataInput() {
     [dataToDisplay, simulationResults.length],
   );
 
+  const columnCellOrder = useMemo(() => {
+    const n = userData.columns.length;
+    if (!columnDragPreview || n === 0) return undefined;
+    const indices = Array.from({ length: n }, (_, i) => i);
+    return arrayMove(indices, columnDragPreview.activeIndex, columnDragPreview.overIndex);
+  }, [columnDragPreview, userData.columns.length]);
+
+  const displayColumnAverages = useMemo(() => {
+    if (!columnDragPreview) return columnAverages;
+    return arrayMove(columnAverages, columnDragPreview.activeIndex, columnDragPreview.overIndex);
+  }, [columnDragPreview, columnAverages]);
+
+  const displayColumnStandardDeviations = useMemo(() => {
+    if (!columnDragPreview) return columnStandardDeviations;
+    return arrayMove(
+      columnStandardDeviations,
+      columnDragPreview.activeIndex,
+      columnDragPreview.overIndex,
+    );
+  }, [columnDragPreview, columnStandardDeviations]);
+
+  const displayColumnColors = useMemo(() => {
+    const order = columnCellOrder ?? userData.columns.map((_, i) => i);
+    return order.map((i) => userData.columns[i].color);
+  }, [columnCellOrder, userData.columns]);
+
+  const columnDragOverlayColumn = useMemo(() => {
+    if (!columnDragOverlayId) return null;
+    return userData.columns.find((c) => c.id === columnDragOverlayId) ?? null;
+  }, [columnDragOverlayId, userData.columns]);
+
   /** Only movable rows (all except the fixed trailing row). Last row must not be in `items` or
    *  vertical sort still animates it upward when dragging another row to the bottom. */
   const sortableItemIds = useMemo(() => {
@@ -916,9 +1036,78 @@ export default function DataInput() {
     return dataToDisplay.slice(0, -1).map((r) => r.id);
   }, [dataToDisplay, isCollapsed]);
 
-  const sensors = useSensors(
+  const columnSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const rowSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const columnSortableIds = useMemo(() => userData.columns.map((c) => c.id), [userData.columns]);
+
+  const handleColumnDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const ids = userData.columns.map((c) => c.id);
+      const activeIndex = ids.indexOf(event.active.id as string);
+      if (activeIndex === -1) return;
+      setColumnDragPreview({ activeIndex, overIndex: activeIndex });
+      setColumnDragOverlayId(event.active.id as string);
+    },
+    [userData.columns],
+  );
+
+  const handleColumnDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event;
+      const ids = userData.columns.map((c) => c.id);
+      const activeIndex = ids.indexOf(active.id as string);
+      if (activeIndex === -1) return;
+
+      // When the pointer is over the dragged item itself (e.g. dragged back to the start
+      // column), active === over. We must reset preview to identity; otherwise the previous
+      // overIndex stays stale and the grid preview stays wrong.
+      if (!over || active.id === over.id) {
+        setColumnDragPreview({ activeIndex, overIndex: activeIndex });
+        return;
+      }
+
+      const overIndex = ids.indexOf(over.id as string);
+      if (overIndex === -1) return;
+      setColumnDragPreview({ activeIndex, overIndex });
+    },
+    [userData.columns],
+  );
+
+  const handleColumnDragCancel = useCallback(() => {
+    setColumnDragPreview(null);
+    setColumnDragOverlayId(null);
+  }, []);
+
+  const handleColumnDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setColumnDragPreview(null);
+      setColumnDragOverlayId(null);
+      if (isSimulating) return;
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const ids = userData.columns.map((c) => c.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+      reorderColumns(oldIndex, newIndex);
+      setEffectSizes((prev) => {
+        const next: { [key: number]: string } = {};
+        for (const [k, v] of Object.entries(prev)) {
+          const ki = Number(k);
+          next[remapColumnIndexAfterMove(ki, oldIndex, newIndex)] = v;
+        }
+        return next;
+      });
+      setEditingColumnNames((prev) => arrayMove(prev, oldIndex, newIndex));
+    },
+    [isSimulating, userData.columns, reorderColumns],
   );
 
   const handleDragEnd = useCallback(
@@ -970,6 +1159,7 @@ export default function DataInput() {
       deleteRow: deleteRowWithOverlayCleanup,
       isCollapsed,
       columns: userData.columns,
+      columnCellOrder,
       showBlocks: userData.blockingEnabled,
       totalRows: dataToDisplay.length,
       duration: isSimulating ? duration : 1.0,
@@ -1022,6 +1212,7 @@ export default function DataInput() {
     isSimulating,
     userData.blockingEnabled,
     userData.columns,
+    columnCellOrder,
     addRow,
     deleteRowWithOverlayCleanup,
     setAssignment,
@@ -1051,7 +1242,7 @@ export default function DataInput() {
 
       <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
         <motion.div
-          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-hidden shadow-lg ${
+          className={`flex flex-col bg-light-background dark:bg-dark-background rounded-lg relative overflow-visible shadow-lg ${
             isSimulating ?
               "border-2 border-light-secondary dark:border-dark-secondary"
             : "border-1 border-slate-700/20"
@@ -1078,41 +1269,79 @@ export default function DataInput() {
                 <div className="min-w-[1.5rem] flex justify-center">#</div>
               </div>
             </div>
-            <div className="flex-grow flex">
-              {userData.columns.map((column, index) => (
-                <div key={index} className="flex-1" data-column-index={index}>
-                  <ColumnHeader
-                    isEditing={editingColumnNames[index]}
-                    value={column.name}
-                    onChange={(e) => handleColumnNameChange(index, e)}
-                    onBlur={() => {
-                      const newEditingColumnNames = [...editingColumnNames];
-                      newEditingColumnNames[index] = false;
-                      setEditingColumnNames(newEditingColumnNames);
-                    }}
-                    onClick={() => {
-                      if (isSimulating) return;
-                      const newEditingColumnNames = [...editingColumnNames];
-                      newEditingColumnNames[index] = true;
-                      setEditingColumnNames(newEditingColumnNames);
-                    }}
-                    removeColumn={() => !isSimulating && removeColumn(index)}
-                    color={column.color}
-                    removable={userData.columns.length > 2}
-                    disabled={isSimulating}
-                    columnIndex={index}
-                    totalColumns={userData.columns.length}
-                    onNavigation={handleHeaderNavigation}
-                  />
+            <DndContext
+              sensors={columnSensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToHorizontalAxis]}
+              onDragStart={handleColumnDragStart}
+              onDragOver={handleColumnDragOver}
+              onDragEnd={handleColumnDragEnd}
+              onDragCancel={handleColumnDragCancel}
+            >
+              <SortableContext items={columnSortableIds} strategy={horizontalListSortingStrategy}>
+                <div className="flex min-w-0 flex-grow">
+                  {userData.columns.map((column, index) => (
+                    <SortableColumnHeader
+                      key={column.id}
+                      column={column}
+                      isEditing={editingColumnNames[index]}
+                      value={column.name}
+                      onChange={(e) => handleColumnNameChange(index, e)}
+                      onBlur={() => {
+                        const newEditingColumnNames = [...editingColumnNames];
+                        newEditingColumnNames[index] = false;
+                        setEditingColumnNames(newEditingColumnNames);
+                      }}
+                      onClick={() => {
+                        if (isSimulating) return;
+                        const newEditingColumnNames = [...editingColumnNames];
+                        newEditingColumnNames[index] = true;
+                        setEditingColumnNames(newEditingColumnNames);
+                      }}
+                      removeColumn={() => !isSimulating && removeColumn(index)}
+                      color={column.color}
+                      removable={userData.columns.length > 2}
+                      disabled={isSimulating}
+                      columnIndex={index}
+                      totalColumns={userData.columns.length}
+                      onNavigation={handleHeaderNavigation}
+                      isSimulating={isSimulating}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={null}>
+                {columnDragOverlayColumn ?
+                  <div className="flex h-full w-full min-w-0 cursor-grabbing touch-none items-center justify-center">
+                    <div
+                      className={`inline-flex w-fit max-w-full min-w-0 items-center gap-1 rounded-md px-3 py-0.5 shadow-sm bg-light-background-secondary dark:bg-dark-background-secondary ${columnDragOverlayColumn.color}`}
+                    >
+                      <span
+                        className="shrink-0 text-light-text-tertiary dark:text-dark-text-tertiary"
+                        aria-hidden
+                      >
+                        <Icons.GripVertical size={3} />
+                      </span>
+                      <span
+                        className="min-w-0 max-w-full truncate text-center"
+                        style={{
+                          WebkitTextStroke: "0.25px currentColor",
+                          paintOrder: "stroke fill",
+                        }}
+                      >
+                        {columnDragOverlayColumn.name}
+                      </span>
+                    </div>
+                  </div>
+                : null}
+              </DragOverlay>
+            </DndContext>
 
             {userData.blockingEnabled && (
               <div className="w-24 flex-shrink-0 flex items-center px-6 font-medium">Block</div>
             )}
             <div className="flex items-center justify-center w-14 flex-shrink-0">
-              <Tooltip content="Add column" position="left">
+              <Tooltip content="Add column" position="bottom">
                 <button
                   onClick={() => !isSimulating && addColumn("New Column")}
                   className={`focus:outline-none ${
@@ -1131,10 +1360,12 @@ export default function DataInput() {
 
           <div
             ref={scrollContainerRef}
-            className={`overflow-y-auto flex-grow ${isSimulating ? "select-none" : ""}`}
+            className={`overflow-y-auto flex-grow ${isSimulating ? "select-none" : ""} ${
+              columnDragPreview ? "pointer-events-none" : ""
+            }`}
           >
             {dataToDisplay.length > 0 ?
-              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <DndContext sensors={rowSensors} onDragEnd={handleDragEnd}>
                 <SortableContext items={sortableItemIds}>
                   {!assignmentFlipEnabled ?
                     <>{renderRows}</>
@@ -1151,24 +1382,40 @@ export default function DataInput() {
               </Flipper>
             }
           </div>
-          <div className="flex-shrink-0" ref={averagesRef}>
+          <div
+            className={`flex-shrink-0 ${columnDragPreview ? "pointer-events-none" : ""}`}
+            ref={averagesRef}
+          >
             <ColumnAverages
-              averages={columnAverages}
-              standardDeviations={columnStandardDeviations}
-              columnColors={userData.columns.map((column) => column.color)}
+              averages={displayColumnAverages}
+              standardDeviations={displayColumnStandardDeviations}
+              columnColors={displayColumnColors}
               showBlocks={userData.blockingEnabled}
             />
           </div>
 
           {/* Baseline Selection Row */}
-          <div className="flex-shrink-0 bg-light-background-secondary dark:bg-dark-background-secondary">
+          <div
+            className={`flex-shrink-0 rounded-b-lg bg-light-background-secondary dark:bg-dark-background-secondary ${
+              columnDragPreview ? "pointer-events-none" : ""
+            }`}
+          >
             <div className="flex items-stretch w-full h-10">
               <div className="flex-shrink-0 flex items-center justify-center font-medium text-light-text-secondary dark:text-dark-text-secondary text-[13px] w-14">
-                Baseline
+                <Tooltip
+                  content="Effects and statistics are expressed relative to the baseline column."
+                  position="top"
+                  wrapContent
+                >
+                  <span className="cursor-help">Baseline</span>
+                </Tooltip>
               </div>
               <div className="flex-grow flex">
-                {userData.columns.map((column, index) => (
-                  <div key={index} className="flex-1 flex items-center justify-center">
+                {(columnCellOrder ?? userData.columns.map((_, i) => i)).map((storageIdx) => (
+                  <div
+                    key={userData.columns[storageIdx].id}
+                    className="flex-1 flex items-center justify-center"
+                  >
                     <label
                       className={`flex items-center cursor-pointer ${
                         isSimulating ? "opacity-50 cursor-not-allowed" : ""
@@ -1177,9 +1424,9 @@ export default function DataInput() {
                       <input
                         type="radio"
                         name="baseline-column"
-                        value={index}
-                        checked={userData.baselineColumn === index}
-                        onChange={() => !isSimulating && setBaselineColumn(index)}
+                        value={storageIdx}
+                        checked={userData.baselineColumn === storageIdx}
+                        onChange={() => !isSimulating && setBaselineColumn(storageIdx)}
                         disabled={isSimulating}
                         className="w-4 h-4 accent-light-primary dark:accent-dark-primary cursor-pointer"
                       />
@@ -1194,7 +1441,11 @@ export default function DataInput() {
         </motion.div>
 
         {/* Effect Sizes Section */}
-        <div className="w-full bg-light-background-secondary dark:bg-dark-background-secondary rounded-lg">
+        <div
+          className={`w-full bg-light-background-secondary dark:bg-dark-background-secondary rounded-lg ${
+            columnDragPreview ? "pointer-events-none" : ""
+          }`}
+        >
           {/* Effect Sizes Row */}
           <div className="flex items-stretch">
             <div className="flex-shrink-0 flex items-center justify-center px-1.5 py-3 text-sm text-light-text-secondary dark:text-dark-text-secondary leading-tight w-14">
@@ -1205,16 +1456,19 @@ export default function DataInput() {
               </span>
             </div>
             <div className="flex-grow flex pr-14">
-              {userData.columns.map((column, index) => (
-                <div key={index} className="flex-1 flex items-center justify-center px-2 py-3">
-                  {index === userData.baselineColumn ?
+              {(columnCellOrder ?? userData.columns.map((_, i) => i)).map((storageIdx) => (
+                <div
+                  key={userData.columns[storageIdx].id}
+                  className="flex-1 flex items-center justify-center px-2 py-3"
+                >
+                  {storageIdx === userData.baselineColumn ?
                     <div className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary italic">
                       —
                     </div>
                   : <input
                       type="number"
-                      value={effectSizes[index] || ""}
-                      onChange={(e) => handleEffectSizeChange(index, e.target.value)}
+                      value={effectSizes[storageIdx] || ""}
+                      onChange={(e) => handleEffectSizeChange(storageIdx, e.target.value)}
                       onWheel={(e) => (e.target as HTMLElement).blur()}
                       disabled={isSimulating}
                       placeholder="0"
@@ -1234,6 +1488,7 @@ export default function DataInput() {
             <Tooltip
               content={isEffectSizesValid ? "" : "Please enter valid effect sizes for all columns"}
               className="w-full"
+              position="bottom"
             >
               <button
                 onClick={handleFill}

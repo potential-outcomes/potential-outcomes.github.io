@@ -1,9 +1,10 @@
 import React from "react";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { Icons } from "../common/Icons";
 import { Tooltip } from "../common/Tooltip";
 import "@/styles/globals.css";
 
-interface ColumnHeaderProps {
+export interface ColumnHeaderProps {
   isEditing: boolean;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -19,6 +20,11 @@ interface ColumnHeaderProps {
     direction: "up" | "down" | "left" | "right" | "tab" | "shiftTab" | "enter",
     columnIndex: number,
   ) => void;
+  sortableDragHandle?: {
+    listeners: SyntheticListenerMap | undefined;
+    setActivatorNodeRef: (element: HTMLElement | null) => void;
+    isDragging: boolean;
+  };
 }
 
 export function ColumnHeader({
@@ -34,6 +40,7 @@ export function ColumnHeader({
   columnIndex,
   totalColumns,
   onNavigation,
+  sortableDragHandle,
 }: ColumnHeaderProps) {
   const handleClick = (event: React.MouseEvent) => {
     if (!disabled) {
@@ -132,48 +139,82 @@ export function ColumnHeader({
 
   return (
     <div
-      className={`relative flex items-center justify-center h-full px-2 ${color} ${
+      className={`relative flex h-full min-w-0 items-center justify-center px-6 ${color} ${
         disabled ? "opacity-90" : ""
       }`}
     >
-      {isEditing ? (
-        <input
-          type="text"
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          onKeyDown={handleKeyDown}
-          data-cell-id={`column-header-${columnIndex}`}
-          className={`w-full bg-transparent truncate text-center border-b-2 focus:outline-none ${color}`}
-          autoFocus
-          disabled={disabled}
-        />
-      ) : (
-        <div className="flex items-center">
-          <span
-            className={`truncate ${
-              disabled ? "cursor-default" : "cursor-text"
-            } !${color}`}
-            onClick={handleClick}
-            onKeyDown={handleSpanKeyDown}
-            tabIndex={disabled ? -1 : 0}
-            data-cell-id={`column-header-${columnIndex}`}
+      {/* Match InputCell horizontal inset; cluster grip + label (no flex-1 gap from full-width row). */}
+      <div
+        className={
+          "inline-flex w-fit max-w-full min-w-0 items-center gap-1"
+        }
+      >
+        {sortableDragHandle && (
+          <button
+            type="button"
+            ref={sortableDragHandle.setActivatorNodeRef}
+            className={`touch-none z-20 shrink-0 rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-light-primary dark:focus-visible:ring-dark-primary ${
+              disabled ?
+                "cursor-not-allowed text-light-text-tertiary/50 dark:text-dark-text-tertiary/50"
+              : "cursor-grab text-light-text-tertiary hover:text-light-text-secondary active:cursor-grabbing dark:text-dark-text-tertiary dark:hover:text-dark-text-secondary"
+            }`}
+            aria-label="Drag to reorder column"
+            disabled={disabled}
+            {...sortableDragHandle.listeners}
           >
-            {value}
-          </span>
-          {removable && !disabled && (
-            <Tooltip content="Delete column" position="bottom" className="w-5 h-5">
-              <button
-                onClick={handleRemove}
-                className={`ml-1 ${color} hover:!text-light-error dark:hover:!text-dark-error focus:outline-none`}
-                aria-label="Delete column"
+            <Icons.GripVertical size={3} />
+          </button>
+        )}
+        <div className="flex min-w-0 items-center justify-center">
+          {isEditing ?
+            // Inputs default to size=20 (~20ch min width) unless overridden; grid + span size the
+            // field, so force size=1 and font-inherit so the input matches the label typography.
+            <div className="inline-grid max-w-full min-w-0">
+              <span
+                className={`invisible col-start-1 row-start-1 whitespace-pre text-center ${color}`}
+                aria-hidden
               >
-                <Icons.Clear />
-              </button>
-            </Tooltip>
-          )}
+                {value.length > 0 ? value : "\u00a0"}
+              </span>
+              <input
+                type="text"
+                // Kill the HTML default (size 20) minimum width in all engines.
+                size={1}
+                value={value}
+                onChange={onChange}
+                onBlur={onBlur}
+                onKeyDown={handleKeyDown}
+                data-cell-id={`column-header-${columnIndex}`}
+                className={`col-start-1 row-start-1 w-full min-w-0 max-w-full bg-transparent px-0 font-inherit text-center border-b-2 focus:outline-none ${color}`}
+                autoFocus
+                disabled={disabled}
+              />
+            </div>
+          : <div className="flex min-w-0 items-center">
+              <span
+                className={`truncate ${disabled ? "cursor-default" : "cursor-text"} !${color}`}
+                onClick={handleClick}
+                onKeyDown={handleSpanKeyDown}
+                tabIndex={disabled ? -1 : 0}
+                data-cell-id={`column-header-${columnIndex}`}
+              >
+                {value}
+              </span>
+              {removable && !disabled && (
+                <Tooltip content="Delete column" position="bottom" className="h-5 w-5 shrink-0">
+                  <button
+                    onClick={handleRemove}
+                    className={`ml-1 ${color} hover:!text-light-error dark:hover:!text-dark-error focus:outline-none`}
+                    aria-label="Delete column"
+                  >
+                    <Icons.Clear />
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+          }
         </div>
-      )}
+      </div>
     </div>
   );
 }

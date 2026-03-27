@@ -18,6 +18,8 @@ import {
   PValueType,
   WarningCondition,
   UserDataState,
+  HydrateFromUrlPayload,
+  PlotThresholdDirection,
 } from "./types";
 import {
   createActionResult,
@@ -28,10 +30,10 @@ import {
   dataSnapshotsMatch,
   getCompleteRows,
   newRowId,
+  newColumnId,
 } from "./utils";
 import { testStatistics } from "./testStatistics";
 import { INITIAL_STATE, DEFAULT_COLUMN_COLORS } from "./constants";
-import { i } from "mathjs";
 
 export const SimulationContext = createContext<
   SimulationContextType | undefined
@@ -42,6 +44,10 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 }) => {
   const [state, dispatch] = useReducer(simulationReducer, INITIAL_STATE);
   const simulationSpeedRef = useRef<number>(state.settings.simulationSpeed);
+
+  useEffect(() => {
+    simulationSpeedRef.current = state.settings.simulationSpeed;
+  }, [state.settings.simulationSpeed]);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<number | null>(null);
   const latestStatisticBarRef = useRef<HTMLElement>(null);
@@ -114,6 +120,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
   const deleteRow = dispatchWithResult(actions.deleteRow);
   const reorderRows = dispatchWithResult(actions.reorderRows);
+  const reorderColumns = dispatchWithResult(actions.reorderColumns);
   const updateCell = dispatchWithResult(actions.updateCell);
   const setAssignment = dispatchWithResult(actions.setAssignment);
   const setBlock = dispatchWithResult(actions.setBlock);
@@ -128,6 +135,22 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
   const setTotalSimulations = dispatchWithResult(actions.setTotalSimulations);
   const setPValueType = dispatchWithResult(actions.setPValueType);
   const clearSimulationData = dispatchWithResult(actions.clearSimulationData);
+
+  const hydrateFromUrl = useCallback((payload: HydrateFromUrlPayload) => {
+    simulationSpeedRef.current = payload.settings.simulationSpeed;
+    dispatch(actions.hydrateFromUrl(payload));
+  }, []);
+
+  const setThresholdDirection = useCallback(
+    (direction: PlotThresholdDirection) => {
+      dispatch(actions.setPlotThresholdDirection(direction));
+    },
+    []
+  );
+
+  const setThresholdInput = useCallback((input: string) => {
+    dispatch(actions.setPlotThresholdInput(input));
+  }, []);
   const undo = dispatchWithResult(actions.undo);
   const redo = dispatchWithResult(actions.redo);
   const startSimulation = dispatchWithResult(actions.startSimulation);
@@ -417,6 +440,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
     );
     const defaultColors = DEFAULT_COLUMN_COLORS;
     const columns = uniqueAssignments.map((assignment, index) => ({
+      id: newColumnId(),
       name: assignment.toString(), // Convert to string in case it's numeric
       color: defaultColors[index % defaultColors.length],
     }));
@@ -512,6 +536,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       addRow,
       deleteRow,
       reorderRows,
+      reorderColumns,
       updateCell,
       setAssignment,
       setBlock,
@@ -527,6 +552,11 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       setSelectedTestStatistic,
       setTotalSimulations,
       setPValueType,
+    },
+    plot: {
+      ...state.plot,
+      setThresholdDirection,
+      setThresholdInput,
     },
     control: {
       ...state.control,
@@ -547,6 +577,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
     },
     latestStatisticBarRef,
     error: state.error,
+    hydrateFromUrl,
   };
 
   return (

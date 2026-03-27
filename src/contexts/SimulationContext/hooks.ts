@@ -8,7 +8,8 @@ import {
   SimulationSettingsContext,
   SimulationControlContext,
   SimulationResultsContext,
-  SimulationHistoryContext
+  SimulationHistoryContext,
+  PlotSettingsContext,
 } from './types';
 
 // Helper function to check context
@@ -51,6 +52,10 @@ export function useSimulationResults(): SimulationResultsContext {
 
 export function useSimulationHistory(): SimulationHistoryContext {
   return useSimulationContextCheck().history;
+}
+
+export function usePlotSettings(): PlotSettingsContext {
+  return useSimulationContextCheck().plot;
 }
 
 export function useSimulationState() {

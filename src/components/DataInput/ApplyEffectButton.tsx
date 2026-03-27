@@ -120,6 +120,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({
     <div className="relative inline-flex items-center mx-0">
       <Tooltip
         content={!isWandActive ? `Fill cells based on constant effect` : ""}
+        position="bottom"
       >
         <button
           className={`inline-flex items-center transition-all duration-200 ease-in-out rounded-md ${
@@ -218,6 +219,7 @@ const ApplyEffectButton: React.FC<ApplyEffectButtonProps> = ({
                     : "Please enter valid effect sizes for all columns"
                 }
                 className="w-full"
+                position="bottom"
               >
                 <button
                   onClick={applyTreatmentEffect}

@@ -15,6 +15,8 @@ interface OverlayProps {
   /** Stable row id — reuses the same motion value when the row wrapper remounts (keeps slider animation). */
   rowId?: string;
   columnColors: string[];
+  /** Storage column index per visual column (left-to-right). Identity order when omitted. Used with column-drag preview. */
+  displayColumnOrder?: number[];
 }
 
 const MIN_SHADOW = 10;
@@ -23,9 +25,14 @@ const SHADOW_RANGE = MAX_SHADOW - MIN_SHADOW;
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
-const getParentStyle = (position: number, assignment: number | null, color: string): string => {
+const getParentStyle = (
+  displayIndex: number,
+  assignment: number | null,
+  color: string,
+  storageAtDisplay: number,
+): string => {
   if (assignment === null) return "";
-  const isBold = position !== assignment ? "font-medium" : "";
+  const isBold = storageAtDisplay !== assignment ? "font-medium" : "";
   return `${isBold} ${color} text-shadow-inherit`;
 };
 
@@ -119,6 +126,7 @@ export const Overlay: React.FC<OverlayProps> = ({
   rowIndex,
   rowId,
   columnColors,
+  displayColumnOrder,
 }) => {
   const fallbackX = useMotionValue("0");
   const x: MotionValue<string> = rowId ? getOverlaySliderX(rowId) : fallbackX;
@@ -129,10 +137,26 @@ export const Overlay: React.FC<OverlayProps> = ({
   // Keep it slightly longer to match the previous perceived speed.
   const panelTransitionMs = Math.max(900, Math.round(duration * 1800));
 
+  const n = children.length;
+  const order =
+    displayColumnOrder && displayColumnOrder.length === n ?
+      displayColumnOrder
+    : Array.from({ length: n }, (_, i) => i);
+  const displayAssignmentIndex =
+    assignment === null || n === 0 ?
+      null
+    : (() => {
+        const i = order.indexOf(assignment);
+        return i >= 0 ? i : null;
+      })();
+
   /** Imperative animate() — `style={{ x }}` + `animate={{ x }}` together skip tweening the MV; animating the MV fixes remounts. */
   useEffect(() => {
     const cols = Math.max(children.length, 1);
-    const target = assignment === null ? "0%" : `${assignment * (100 / cols) + 50 / cols}%`;
+    const target =
+      displayAssignmentIndex === null ?
+        "0%"
+      : `${displayAssignmentIndex * (100 / cols) + 50 / cols}%`;
     const prevAssignment = prevAssignmentRef.current;
     prevAssignmentRef.current = assignment;
 
@@ -157,7 +181,7 @@ export const Overlay: React.FC<OverlayProps> = ({
       duration,
     });
     return () => controls.stop();
-  }, [assignment, duration, children.length, x]);
+  }, [assignment, duration, children.length, x, displayAssignmentIndex]);
 
   const renderSliderAnimation = () => (
     <div
@@ -172,7 +196,11 @@ export const Overlay: React.FC<OverlayProps> = ({
         assignment={assignment}
         setAssignment={setAssignment}
         numChildren={children.length}
-        color={assignment !== null ? columnColors[assignment] : ""}
+        color={
+          assignment !== null && displayAssignmentIndex !== null ?
+            columnColors[displayAssignmentIndex]
+          : ""
+        }
         panelTransitionMs={panelTransitionMs}
       />
       <div
@@ -187,7 +215,11 @@ export const Overlay: React.FC<OverlayProps> = ({
         assignment={assignment}
         setAssignment={setAssignment}
         numChildren={children.length}
-        color={assignment !== null ? columnColors[assignment] : ""}
+        color={
+          assignment !== null && displayAssignmentIndex !== null ?
+            columnColors[displayAssignmentIndex]
+          : ""
+        }
         panelTransitionMs={panelTransitionMs}
       />
     </div>
@@ -200,7 +232,7 @@ export const Overlay: React.FC<OverlayProps> = ({
           {children.map((child, index) => (
             <div
               key={index}
-              className={`flex-1 min-w-0 flex items-center justify-center transition-all duration-200 ${getParentStyle(index, assignment, columnColors[index])} no-obstruct-${rowIndex}`}
+              className={`flex-1 min-w-0 flex items-center justify-center transition-all duration-200 ${getParentStyle(index, assignment, columnColors[index], order[index])} no-obstruct-${rowIndex}`}
             >
               {child}
             </div>

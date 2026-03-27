@@ -10,6 +10,7 @@ export { SimulationResult } from "./SimulationResult";
 export { ExperimentalTestStatistic } from "./testStatistics";
 
 export interface Column {
+  id: string;
   name: string;
   color: string;
 }
@@ -54,6 +55,7 @@ export interface SimulationDataContext {
   addRow: () => void;
   deleteRow: (index: number) => void;
   reorderRows: (activeIndex: number, overIndex: number) => void;
+  reorderColumns: (activeIndex: number, overIndex: number) => void;
   updateCell: (
     rowIndex: number,
     columnIndex: number,
@@ -107,14 +109,41 @@ export interface SimulationHistoryContext {
   redo: () => void;
 }
 
+export type PlotThresholdDirection = "leq" | "geq";
+
+export interface PlotSettingsContext {
+  thresholdDirection: PlotThresholdDirection;
+  thresholdInput: string;
+  setThresholdDirection: (direction: PlotThresholdDirection) => void;
+  setThresholdInput: (input: string) => void;
+}
+
+/** Payload for restoring shareable config from the URL (excludes simulation outputs). */
+export interface HydrateFromUrlPayload {
+  userData: UserDataState;
+  settings: {
+    simulationSpeed: number;
+    selectedTestStatistic: ExperimentalTestStatistic;
+    totalSimulations: number;
+    pValueType: PValueType;
+  };
+  plot: {
+    thresholdDirection: PlotThresholdDirection;
+    thresholdInput: string;
+  };
+}
+
 export interface SimulationContextType {
   data: SimulationDataContext;
   settings: SimulationSettingsContext;
+  plot: PlotSettingsContext;
   control: SimulationControlContext;
   results: SimulationResultsContext;
   history: SimulationHistoryContext;
   latestStatisticBarRef: React.MutableRefObject<HTMLElement | null>;
   error: ErrorState | null;
+  /** Apply URL-parsed config in one shot; clears results and undo history. */
+  hydrateFromUrl: (payload: HydrateFromUrlPayload) => void;
 }
 
 // Action types (for use in reducer)
@@ -126,6 +155,10 @@ export type SimulationAction =
   | { type: "DELETE_ROW"; payload: number }
   | {
       type: "REORDER_ROWS";
+      payload: { activeIndex: number; overIndex: number };
+    }
+  | {
+      type: "REORDER_COLUMNS";
       payload: { activeIndex: number; overIndex: number };
     }
   | {
@@ -155,7 +188,10 @@ export type SimulationAction =
   | { type: "SET_OBSERVED_STATISTIC"; payload: number }
   | { type: "SET_SIMULATION_DATA_SNAPSHOT"; payload: UserDataSnapshot }
   | { type: "UNDO" }
-  | { type: "REDO" };
+  | { type: "REDO" }
+  | { type: "HYDRATE_FROM_URL"; payload: HydrateFromUrlPayload }
+  | { type: "SET_PLOT_THRESHOLD_DIRECTION"; payload: PlotThresholdDirection }
+  | { type: "SET_PLOT_THRESHOLD_INPUT"; payload: string };
 
 // State type for the reducer
 export interface SimulationState

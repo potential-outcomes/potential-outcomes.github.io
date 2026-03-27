@@ -88,7 +88,13 @@ const BaselineAndNullEffects: React.FC<BaselineAndNullEffectsProps> = ({
           className="flex-shrink-0 flex items-center justify-center px-2 py-3 text-sm text-light-text-secondary dark:text-dark-text-secondary whitespace-nowrap"
           style={{ width: "4rem" }}
         >
-          Baseline
+          <Tooltip
+            content="Effects and statistics are expressed relative to the baseline column."
+            position="top"
+            wrapContent
+          >
+            <span className="cursor-help">Baseline</span>
+          </Tooltip>
         </div>
         <div className="flex-grow flex pr-14">
           {userData.columns.map((column, index) => (
@@ -173,6 +179,7 @@ const BaselineAndNullEffects: React.FC<BaselineAndNullEffectsProps> = ({
               : "Please enter valid effect sizes for all columns"
           }
           className="w-full"
+          position="bottom"
         >
           <button
             onClick={handleFill}

@@ -6,6 +6,8 @@ interface TooltipProps {
   children: React.ReactNode;
   content: string;
   position?: Position;
+  /** When true, text wraps in a max-width box instead of a single line. */
+  wrapContent?: boolean;
   delay?: number;
   className?: string;
   arrowClassName?: string;
@@ -15,6 +17,7 @@ export function Tooltip({
   children,
   content,
   position = "top",
+  wrapContent = false,
   delay = 200,
   className = "",
   arrowClassName = "",
@@ -64,7 +67,12 @@ export function Tooltip({
       {children}
       {content !== "" && isVisible && (
         <div
-          className={`absolute z-10 px-3 py-2 text-sm rounded-md bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary whitespace-nowrap ${getPositionClasses()}`}
+          className={`absolute z-50 px-3 py-2 text-sm rounded-md bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary ${
+            wrapContent ?
+              // Explicit width: abspos shrink-to-fit otherwise caps to the narrow trigger width, so max-w had no effect.
+              "w-[min(12.5rem,calc(100vw-2rem))] text-left font-light leading-relaxed"
+            : "whitespace-nowrap"
+          } ${getPositionClasses()}`}
         >
           {content}
           <div

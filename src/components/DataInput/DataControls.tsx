@@ -23,7 +23,7 @@ const DataControls: React.FC<DataControlsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const buttonClass = (isActive: boolean = false) => `
-    p-1 focus:outline-none focus:ring-2 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200
+    p-1 focus:outline-none focus:ring-1 focus:ring-light-primary dark:focus:ring-dark-primary rounded transition-colors duration-200
     ${
       isActive
         ? "text-light-primary dark:text-dark-primary"
@@ -35,29 +35,6 @@ const DataControls: React.FC<DataControlsProps> = ({
   return (
     <div className="flex justify-between items-center w-full mb-1.5">
       <div className="flex items-center space-x-1">
-        {/* <ApplyEffectButton disabled={disabled} /> */}
-        <button
-          type="button"
-          onClick={disabled ? undefined : toggleBlocking}
-          className={`
-            flex items-center space-x-1 px-1 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200
-            ${
-              isBlockingEnabled
-                ? "bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background hover:bg-light-primary-dark dark:hover:bg-dark-primary-light focus:ring-light-primary-dark dark:focus:ring-dark-primary-light"
-                : "bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary hover:bg-light-background-secondary dark:hover:bg-dark-background-secondary focus:ring-light-primary dark:focus:ring-dark-primary"
-            }
-            ${disabled ? "opacity-50 cursor-not-allowed" : ""}
-          `}
-          disabled={disabled}
-        >
-          <Icons.Blocking size={4} />
-          <span className="text-sm">
-            {isBlockingEnabled ? "Blocking Enabled" : "Blocking Disabled"}
-          </span>
-        </button>
-      </div>
-      <div className="flex justify-end items-center space-x-1">
         {/* <input
           type="file"
           accept=".csv"
@@ -76,7 +53,7 @@ const DataControls: React.FC<DataControlsProps> = ({
           </button>
         </Tooltip> */}
 
-        <Tooltip content="Undo">
+        <Tooltip content="Undo" position="bottom">
           <button
             type="button"
             title="Undo"
@@ -87,7 +64,7 @@ const DataControls: React.FC<DataControlsProps> = ({
             <Icons.Undo size={4} />
           </button>
         </Tooltip>
-        <Tooltip content="Redo">
+        <Tooltip content="Redo" position="bottom">
           <button
             type="button"
             title="Redo"
@@ -99,7 +76,7 @@ const DataControls: React.FC<DataControlsProps> = ({
           </button>
         </Tooltip>
 
-        <Tooltip content="Empty rows">
+        <Tooltip content="Empty rows" position="bottom">
           <button
             type="button"
             title="Empty rows"
@@ -111,7 +88,7 @@ const DataControls: React.FC<DataControlsProps> = ({
           </button>
         </Tooltip>
 
-        <Tooltip content="Reset data input">
+        <Tooltip content="Reset data input" position="bottom">
           <button
             type="button"
             title="Reset data input"
@@ -122,6 +99,31 @@ const DataControls: React.FC<DataControlsProps> = ({
             <Icons.Reset size={4} />
           </button>
         </Tooltip>
+      </div>
+
+      <div className="flex items-center space-x-1">
+        {/* <ApplyEffectButton disabled={disabled} /> */}
+        <button
+          type="button"
+          onClick={disabled ? undefined : toggleBlocking}
+          className={`
+            flex items-center space-x-1 px-1 py-0.5 rounded-md
+            outline-none ring-1 ring-transparent ring-offset-1 transition-colors duration-200
+            ${
+              isBlockingEnabled
+                ? "bg-light-primary dark:bg-dark-primary text-light-background dark:text-dark-background hover:bg-light-primary-dark dark:hover:bg-dark-primary-light ring-offset-light-primary dark:ring-offset-dark-primary focus:ring-light-primary-dark dark:focus:ring-dark-primary-light"
+                : "bg-light-background-tertiary dark:bg-dark-background-tertiary text-light-text-primary dark:text-dark-text-primary hover:bg-light-background-secondary dark:hover:bg-dark-background-secondary ring-offset-light-background-tertiary dark:ring-offset-dark-background-tertiary focus:ring-light-primary dark:focus:ring-dark-primary"
+            }
+            ${!isBlockingEnabled && !disabled ? "opacity-80 hover:opacity-100" : ""}
+            ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          `}
+          disabled={disabled}
+        >
+          <Icons.Blocking size={4} />
+          <span className="text-sm">
+            {isBlockingEnabled ? "Blocking Enabled" : "No Blocking"}
+          </span>
+        </button>
       </div>
     </div>
   );

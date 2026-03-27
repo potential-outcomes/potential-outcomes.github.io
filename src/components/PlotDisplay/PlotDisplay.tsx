@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { PlotParams } from "react-plotly.js";
 import { Data, Layout } from "plotly.js";
@@ -14,9 +8,9 @@ import {
   useSimulationState,
   useSimulationResults,
   useLatestStatisticBarRef,
+  usePlotSettings,
   testStatistics,
 } from "@/contexts/SimulationContext";
-import { getStatisticUnderNull } from "@/contexts/SimulationContext/testStatistics";
 import { ThresholdFilter, Direction } from "./ThresholdFilter";
 
 const Plot = dynamic<PlotParams>(() => import("react-plotly.js"), {
@@ -80,7 +74,7 @@ function ceilToSignificantFigures(value: number, sigFigs: number): number {
 
 const BIN_WIDTH_SIG_FIGS = 1;
 const Y_AXIS_SIG_FIGS = 2;
-const BIN_WIDTH_SCALE = 1.3;
+const BIN_WIDTH_SCALE = 1.1;
 
 function roundHistogramBinWidthGentle(width: number): number {
   return roundToSignificantFigures(width * BIN_WIDTH_SCALE, BIN_WIDTH_SIG_FIGS);
@@ -95,27 +89,18 @@ export const PlotDisplay: React.FC = () => {
   const { theme } = useTheme();
   const { simulationResults, observedStatistic, simulationDataMatchesCurrent } =
     useSimulationResults();
-  const { userData, selectedTestStatistic, totalSimulations, isSimulating } =
-    useSimulationState();
+  const { userData, selectedTestStatistic, totalSimulations, isSimulating } = useSimulationState();
   const latestStatisticBarRef = useLatestStatisticBarRef();
 
-  // Threshold filter state (hoisted from ThresholdFilter component)
-  const [threshold1Direction, setThreshold1Direction] =
-    useState<Direction>("geq");
-  const [threshold1Input, setThreshold1Input] = useState<string>("");
+  const {
+    thresholdDirection: threshold1Direction,
+    setThresholdDirection: setThreshold1Direction,
+    thresholdInput: threshold1Input,
+    setThresholdInput: setThreshold1Input,
+  } = usePlotSettings();
 
   // Determine if results are stale
   const isStale = simulationResults.length > 0 && !simulationDataMatchesCurrent;
-
-  const statisticUnderNull = useMemo(
-    () =>
-      getStatisticUnderNull(
-        userData.rows,
-        userData.baselineColumn,
-        selectedTestStatistic
-      ),
-    [userData.rows, userData.baselineColumn, selectedTestStatistic]
-  );
 
   // Parse threshold values
   const threshold1Value = useMemo(() => {
@@ -129,11 +114,10 @@ export const PlotDisplay: React.FC = () => {
       observedStat: number,
       theme: string,
       isStale: boolean,
-      /** Stabilizes bin width during incremental simulation (Scott's n^(1/3) term). */
-      expectedSimulations: number
+      /** Stabilizes bin width during incremental simulation (Scott's n^(1/5) term). */
+      expectedSimulations: number,
     ) => {
-      const isPositiveOnly =
-        testStatistics[selectedTestStatistic].alwaysPositive;
+      const isPositiveOnly = testStatistics[selectedTestStatistic].alwaysPositive;
 
       // Adjust opacity based on stale status
       const baseOpacity = isStale ? 0.3 : 0.6;
@@ -141,15 +125,13 @@ export const PlotDisplay: React.FC = () => {
 
       if (!simulationData?.length) {
         // Initialize empty plot with appropriate scale
-        const rawBin =
-          observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
+        const rawBin = observedStat === 0 ? 1 : Math.abs(observedStat) / 15;
         const binSize = roundHistogramBinWidthGentle(rawBin);
         const halfWidth = Math.max(5 * binSize, Math.abs(observedStat));
-        const dummyMin = isPositiveOnly
-          ? 0
-          : observedStat - 2 * halfWidth;
-        const dummyMax = isPositiveOnly
-          ? 2 * Math.max(5 * binSize, Math.abs(observedStat))
+        const dummyMin = isPositiveOnly ? 0 : observedStat - 2 * halfWidth;
+        const dummyMax =
+          isPositiveOnly ?
+            2 * Math.max(5 * binSize, Math.abs(observedStat))
           : observedStat + 2 * halfWidth;
         const totalBins = Math.ceil((dummyMax - dummyMin) / binSize);
 
@@ -165,14 +147,14 @@ export const PlotDisplay: React.FC = () => {
           type: "bar",
           marker: {
             color:
-              theme === "light"
-                ? `rgba(66, 135, 245, ${baseOpacity})`
-                : `rgba(102, 187, 255, ${baseOpacity})`,
+              theme === "light" ?
+                `rgba(66, 135, 245, ${baseOpacity})`
+              : `rgba(102, 187, 255, ${baseOpacity})`,
             line: {
               color:
-                theme === "light"
-                  ? `rgba(66, 66, 75, ${lineOpacity})`
-                  : `rgba(187, 187, 195, ${lineOpacity})`,
+                theme === "light" ?
+                  `rgba(66, 66, 75, ${lineOpacity})`
+                : `rgba(187, 187, 195, ${lineOpacity})`,
               width: 1,
             },
           },
@@ -194,22 +176,21 @@ export const PlotDisplay: React.FC = () => {
       const dataMax = Math.max(...simulationData);
       const hasSpread = dataMin !== dataMax;
 
-      // Calculate bin size using Scott's rule: bin width = 3.49 × σ / n^(1/3)
+      // Calculate bin size using Scott's rule with n^(1/5).
+      // bin width = 3.49 × σ / n^(1/5)
       const n = simulationData.length;
       const scottN = Math.max(n, Math.max(1, expectedSimulations));
+      const scottNTerm = Math.pow(scottN, 1 / 5);
       const mean = simulationData.reduce((sum, val) => sum + val, 0) / n;
-      const variance =
-        simulationData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-        n;
+      const variance = simulationData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / n;
       const standardDeviation = Math.sqrt(variance);
 
-      // Apply Scott's rule; use max(actual, expected) for n^(1/3) so width doesn't drift each trial
+      // Apply Scott's rule using n^(1/5)
       let binSize =
-        standardDeviation > 0
-          ? (3.49 * standardDeviation) / Math.pow(scottN, 1 / 3)
-          : hasSpread
-          ? (dataMax - dataMin) / 10 // Fallback: use 10 bins if no variance
-          : 1; // Fallback: use bin size of 1 if no spread
+        standardDeviation > 0 ? (3.49 * standardDeviation) / scottNTerm
+        : hasSpread ?
+          (dataMax - dataMin) / 10 // Fallback: use 10 bins if no variance
+        : 1; // Fallback: use bin size of 1 if no spread
 
       // Ensure minimum bin size to avoid division by zero or too many bins
       if (binSize <= 0 || !isFinite(binSize)) {
@@ -250,10 +231,7 @@ export const PlotDisplay: React.FC = () => {
 
       // Count occurrences in bins
       simulationData.forEach((value) => {
-        const binIndex = Math.min(
-          Math.floor((value - adjustedMin) / binSize),
-          totalBins - 1
-        );
+        const binIndex = Math.min(Math.floor((value - adjustedMin) / binSize), totalBins - 1);
         if (binIndex >= 0 && bins[binIndex]) {
           bins[binIndex].count++;
         }
@@ -266,14 +244,14 @@ export const PlotDisplay: React.FC = () => {
         type: "bar",
         marker: {
           color:
-            theme === "light"
-              ? `rgba(66, 135, 245, ${baseOpacity})`
-              : `rgba(102, 187, 255, ${baseOpacity})`,
+            theme === "light" ?
+              `rgba(66, 135, 245, ${baseOpacity})`
+            : `rgba(102, 187, 255, ${baseOpacity})`,
           line: {
             color:
-              theme === "light"
-                ? `rgba(66, 66, 75, ${lineOpacity})`
-                : `rgba(187, 187, 195, ${lineOpacity})`,
+              theme === "light" ?
+                `rgba(66, 66, 75, ${lineOpacity})`
+              : `rgba(187, 187, 195, ${lineOpacity})`,
             width: 1,
           },
         },
@@ -291,26 +269,20 @@ export const PlotDisplay: React.FC = () => {
         maxCount,
       };
     },
-    [selectedTestStatistic]
+    [selectedTestStatistic],
   );
 
   const simulationData = useMemo(
     () =>
       simulationResults.map((result) =>
-        result.getTestStatistic(selectedTestStatistic, userData.baselineColumn)
+        result.getTestStatistic(selectedTestStatistic, userData.baselineColumn),
       ),
-    [isSimulating, simulationResults.length, selectedTestStatistic]
+    [isSimulating, simulationResults.length, selectedTestStatistic],
   );
 
   const { plotData, minResult, maxResult, binSize, bins, maxCount } = useMemo(
     () =>
-      calculatePlotData(
-        simulationData,
-        observedStatistic || 0,
-        theme,
-        isStale,
-        totalSimulations
-      ),
+      calculatePlotData(simulationData, observedStatistic || 0, theme, isStale, totalSimulations),
     [
       calculatePlotData,
       simulationData,
@@ -320,44 +292,15 @@ export const PlotDisplay: React.FC = () => {
       simulationResults.length,
       isStale,
       totalSimulations,
-    ]
+    ],
   );
 
-  const displayYMax = useMemo(
-    () => roundYAxisMaxGentle(Math.max(maxCount + 1, 1)),
-    [maxCount]
-  );
+  const displayYMax = useMemo(() => roundYAxisMaxGentle(Math.max(maxCount + 1, 1)), [maxCount]);
 
-  // Add threshold line and stat-under-null reference to plot data
+  // Add threshold line to plot data
   const plotDataWithThresholds = useMemo(() => {
     const thresholdLineOpacity = isStale ? 0.4 : 0.8;
-    const nullStatLineOpacity = isStale ? 0.35 : 0.85;
     const traces = [...plotData];
-
-    if (
-      statisticUnderNull !== null &&
-      statisticUnderNull !== undefined &&
-      Number.isFinite(statisticUnderNull)
-    ) {
-      const statUnderNullLine: Data = {
-        x: [statisticUnderNull, statisticUnderNull],
-        y: [0, displayYMax],
-        type: "scatter",
-        mode: "lines",
-        line: {
-          color:
-            theme === "light"
-              ? `rgba(22, 163, 74, ${nullStatLineOpacity})`
-              : `rgba(74, 222, 128, ${nullStatLineOpacity})`,
-          width: 3,
-          dash: "dash",
-        },
-        name: "Statistic under null",
-        showlegend: true,
-        legendgroup: "stat-under-null",
-      };
-      traces.push(statUnderNullLine);
-    }
 
     if (threshold1Value !== null) {
       const thresholdLine1: Data = {
@@ -367,9 +310,9 @@ export const PlotDisplay: React.FC = () => {
         mode: "lines",
         line: {
           color:
-            theme === "light"
-              ? `rgba(220, 38, 38, ${thresholdLineOpacity})`
-              : `rgba(248, 113, 113, ${thresholdLineOpacity})`,
+            theme === "light" ?
+              `rgba(220, 38, 38, ${thresholdLineOpacity})`
+            : `rgba(248, 113, 113, ${thresholdLineOpacity})`,
           width: 3,
           dash: "dash",
         },
@@ -381,44 +324,18 @@ export const PlotDisplay: React.FC = () => {
     }
 
     return traces;
-  }, [
-    plotData,
-    threshold1Value,
-    displayYMax,
-    theme,
-    isStale,
-    statisticUnderNull,
-  ]);
+  }, [plotData, threshold1Value, displayYMax, theme, isStale]);
 
   const histogramXMin = minResult - 0.5 * binSize;
   const histogramXMax =
-    bins.length > 0
-      ? bins[bins.length - 1].end + 0.5 * binSize
-      : maxResult + 0.5 * binSize;
-
-  const statUnderNullFinite =
-    statisticUnderNull !== null &&
-    statisticUnderNull !== undefined &&
-    Number.isFinite(statisticUnderNull)
-      ? statisticUnderNull
-      : null;
-
-  const halfBin = 0.5 * binSize;
-  const xAxisRangeMin =
-    statUnderNullFinite !== null
-      ? Math.min(histogramXMin, statUnderNullFinite - halfBin)
-      : histogramXMin;
-  const xAxisRangeMax =
-    statUnderNullFinite !== null
-      ? Math.max(histogramXMax, statUnderNullFinite + halfBin)
-      : histogramXMax;
+    bins.length > 0 ? bins[bins.length - 1].end + 0.5 * binSize : maxResult + 0.5 * binSize;
 
   const layout: Partial<Layout> = useMemo(
     () => ({
       autosize: true,
       xaxis: {
         title: testStatistics[selectedTestStatistic].name,
-        range: [xAxisRangeMin, xAxisRangeMax],
+        range: [histogramXMin, histogramXMax],
         tickmode: "auto",
         nticks: 10,
         tickfont: { color: theme === "light" ? "black" : "white" },
@@ -439,10 +356,8 @@ export const PlotDisplay: React.FC = () => {
         y: 0.98,
         xanchor: "right",
         yanchor: "top",
-        bgcolor:
-          theme === "light" ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)",
-        bordercolor:
-          theme === "light" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
+        bgcolor: theme === "light" ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)",
+        bordercolor: theme === "light" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
         borderwidth: 1,
         font: { color: theme === "light" ? "black" : "white" },
       },
@@ -451,13 +366,7 @@ export const PlotDisplay: React.FC = () => {
       plot_bgcolor: "rgba(0,0,0,0)",
       margin: { l: 45, r: 35, b: 32, t: 0 },
     }),
-    [
-      selectedTestStatistic,
-      theme,
-      displayYMax,
-      xAxisRangeMin,
-      xAxisRangeMax,
-    ]
+    [selectedTestStatistic, theme, displayYMax, histogramXMin, histogramXMax],
   );
 
   const addBinRangeAttributes = useCallback(() => {
@@ -478,18 +387,12 @@ export const PlotDisplay: React.FC = () => {
   };
 
   // Check if bin meets threshold criteria for either threshold
-  const meetsThreshold = (
-    bin: Bin,
-    threshold1: number | null,
-    direction1: Direction
-  ): boolean => {
+  const meetsThreshold = (bin: Bin, threshold1: number | null, direction1: Direction): boolean => {
     const binCenter = (bin.start + bin.end) / 2;
 
     if (threshold1 === null) return false;
 
-    return direction1 === "leq"
-      ? binCenter <= threshold1
-      : binCenter >= threshold1;
+    return direction1 === "leq" ? binCenter <= threshold1 : binCenter >= threshold1;
   };
 
   const getBarColor = (
@@ -497,7 +400,7 @@ export const PlotDisplay: React.FC = () => {
     meetsThresholdCriteria: boolean,
     theme: string,
     isSimulating: boolean,
-    isStale: boolean
+    isStale: boolean,
   ) => {
     const staleOpacity = isStale ? 0.3 : 1.0;
 
@@ -505,8 +408,8 @@ export const PlotDisplay: React.FC = () => {
     if (isSimulating && isLatest) {
       // Use red highlight if it meets threshold criteria
       if (threshold1Value !== null && meetsThresholdCriteria) {
-        return theme === "light"
-          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+        return theme === "light" ?
+            `rgba(220, 38, 38, ${0.8 * staleOpacity})`
           : `rgba(248, 113, 113, ${0.8 * staleOpacity})`;
       }
       // Otherwise use blue highlight
@@ -515,14 +418,14 @@ export const PlotDisplay: React.FC = () => {
 
     // Threshold shading when threshold is set and bar meets criteria
     if (threshold1Value !== null && meetsThresholdCriteria) {
-      return theme === "light"
-        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+      return theme === "light" ?
+          `rgba(220, 38, 38, ${0.3 * staleOpacity})`
         : `rgba(248, 113, 113, ${0.3 * staleOpacity})`;
     }
 
     // Default bar color
-    return theme === "light"
-      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+    return theme === "light" ?
+        `rgba(66, 135, 245, ${0.4 * staleOpacity})`
       : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
   };
 
@@ -534,7 +437,7 @@ export const PlotDisplay: React.FC = () => {
     isSimulating: boolean,
     isStale: boolean,
     threshold: number,
-    direction: Direction
+    direction: Direction,
   ): { leftColor: string; rightColor: string } => {
     const staleOpacity = isStale ? 0.3 : 1.0;
 
@@ -548,33 +451,35 @@ export const PlotDisplay: React.FC = () => {
 
     // For latest bar during simulation, use highlight colors
     if (isSimulating && isLatest) {
-      const leftColor = leftSideMeets
-        ? theme === "light"
-          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+      const leftColor =
+        leftSideMeets ?
+          theme === "light" ?
+            `rgba(220, 38, 38, ${0.8 * staleOpacity})`
           : `rgba(248, 113, 113, ${0.8 * staleOpacity})`
         : `rgba(80, 150, 235, ${0.8 * staleOpacity})`;
-      const rightColor = rightSideMeets
-        ? theme === "light"
-          ? `rgba(220, 38, 38, ${0.8 * staleOpacity})`
+      const rightColor =
+        rightSideMeets ?
+          theme === "light" ?
+            `rgba(220, 38, 38, ${0.8 * staleOpacity})`
           : `rgba(248, 113, 113, ${0.8 * staleOpacity})`
         : `rgba(80, 150, 235, ${0.8 * staleOpacity})`;
       return { leftColor, rightColor };
     }
 
     // For threshold shading
-    const leftColor = leftSideMeets
-      ? theme === "light"
-        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+    const leftColor =
+      leftSideMeets ?
+        theme === "light" ?
+          `rgba(220, 38, 38, ${0.3 * staleOpacity})`
         : `rgba(248, 113, 113, ${0.3 * staleOpacity})`
-      : theme === "light"
-      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+      : theme === "light" ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
       : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
-    const rightColor = rightSideMeets
-      ? theme === "light"
-        ? `rgba(220, 38, 38, ${0.3 * staleOpacity})`
+    const rightColor =
+      rightSideMeets ?
+        theme === "light" ?
+          `rgba(220, 38, 38, ${0.3 * staleOpacity})`
         : `rgba(248, 113, 113, ${0.3 * staleOpacity})`
-      : theme === "light"
-      ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
+      : theme === "light" ? `rgba(66, 135, 245, ${0.4 * staleOpacity})`
       : `rgba(102, 187, 255, ${0.4 * staleOpacity})`;
 
     return { leftColor, rightColor };
@@ -603,13 +508,12 @@ export const PlotDisplay: React.FC = () => {
       const bars = plotRef.current.querySelectorAll(".bars .point");
       if (bars.length === 0) return;
 
-      const latestStatistic = simulationResults[
-        simulationResults.length - 1
-      ]?.getTestStatistic(selectedTestStatistic, userData.baselineColumn);
+      const latestStatistic = simulationResults[simulationResults.length - 1]?.getTestStatistic(
+        selectedTestStatistic,
+        userData.baselineColumn,
+      );
       const latestBinIndex =
-        latestStatistic !== undefined
-          ? findBinIndex(latestStatistic, bins)
-          : -1;
+        latestStatistic !== undefined ? findBinIndex(latestStatistic, bins) : -1;
 
       const defs = ensureGradientDefs();
 
@@ -621,15 +525,12 @@ export const PlotDisplay: React.FC = () => {
 
           // Check if threshold falls within this bin
           const thresholdInBin =
-            threshold1Value !== null &&
-            threshold1Value > bin.start &&
-            threshold1Value < bin.end;
+            threshold1Value !== null && threshold1Value > bin.start && threshold1Value < bin.end;
 
           if (thresholdInBin && defs) {
             // Calculate threshold position as percentage
             const binWidth = bin.end - bin.start;
-            const thresholdPosition =
-              ((threshold1Value - bin.start) / binWidth) * 100;
+            const thresholdPosition = ((threshold1Value - bin.start) / binWidth) * 100;
 
             // Get colors for left and right sides
             const { leftColor, rightColor } = getSplitBarColors(
@@ -639,7 +540,7 @@ export const PlotDisplay: React.FC = () => {
               isSimulating,
               isStale,
               threshold1Value!,
-              threshold1Direction
+              threshold1Direction,
             );
 
             // Create unique gradient ID for this bar
@@ -654,7 +555,7 @@ export const PlotDisplay: React.FC = () => {
             // Create SVG linear gradient
             const gradient = document.createElementNS(
               "http://www.w3.org/2000/svg",
-              "linearGradient"
+              "linearGradient",
             );
             gradient.setAttribute("id", gradientId);
             gradient.setAttribute("x1", "0%");
@@ -663,34 +564,22 @@ export const PlotDisplay: React.FC = () => {
             gradient.setAttribute("y2", "0%");
 
             // Add color stops
-            const stop1 = document.createElementNS(
-              "http://www.w3.org/2000/svg",
-              "stop"
-            );
+            const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop1.setAttribute("offset", "0%");
             stop1.setAttribute("stop-color", leftColor);
             gradient.appendChild(stop1);
 
-            const stop2 = document.createElementNS(
-              "http://www.w3.org/2000/svg",
-              "stop"
-            );
+            const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop2.setAttribute("offset", `${thresholdPosition}%`);
             stop2.setAttribute("stop-color", leftColor);
             gradient.appendChild(stop2);
 
-            const stop3 = document.createElementNS(
-              "http://www.w3.org/2000/svg",
-              "stop"
-            );
+            const stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop3.setAttribute("offset", `${thresholdPosition}%`);
             stop3.setAttribute("stop-color", rightColor);
             gradient.appendChild(stop3);
 
-            const stop4 = document.createElementNS(
-              "http://www.w3.org/2000/svg",
-              "stop"
-            );
+            const stop4 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop4.setAttribute("offset", "100%");
             stop4.setAttribute("stop-color", rightColor);
             gradient.appendChild(stop4);
@@ -705,7 +594,7 @@ export const PlotDisplay: React.FC = () => {
             const meetsThresholdCriteria = meetsThreshold(
               bin,
               threshold1Value,
-              threshold1Direction
+              threshold1Direction,
             );
 
             // Remove any gradient reference and use solid color
@@ -715,7 +604,7 @@ export const PlotDisplay: React.FC = () => {
               meetsThresholdCriteria,
               theme,
               isSimulating,
-              isStale
+              isStale,
             );
           }
 
@@ -809,27 +698,14 @@ export const PlotDisplay: React.FC = () => {
 
       {/* Cards row below plot, above threshold filter */}
       <div className="flex gap-4 mb-4 items-stretch">
-        {/* Stat under null (reference under H₀) */}
-        <div className="flex-1">
-          <StatDisplay
-            title="Statistic under null"
-            value={
-              statisticUnderNull !== null && statisticUnderNull !== undefined
-                ? statisticUnderNull.toFixed(3)
-                : "—"
-            }
-            isStale={isStale}
-          />
-        </div>
-
         {/* Observed Statistic Card */}
         <div className="flex-1">
           <StatDisplay
             title="Observed Statistic"
             value={
-              observedStatistic !== null && observedStatistic !== undefined
-                ? observedStatistic.toFixed(3)
-                : "—"
+              observedStatistic !== null && observedStatistic !== undefined ?
+                observedStatistic.toFixed(3)
+              : "—"
             }
             isStale={isStale}
           />
@@ -840,9 +716,9 @@ export const PlotDisplay: React.FC = () => {
           <StatDisplay
             title="Simulation Progress"
             value={
-              isSimulating || simulationProgress.current > 0
-                ? `${simulationProgress.current} / ${simulationProgress.total}`
-                : "—"
+              isSimulating || simulationProgress.current > 0 ?
+                `${simulationProgress.current} / ${simulationProgress.total}`
+              : "—"
             }
             isStale={isStale}
             valueNumeric

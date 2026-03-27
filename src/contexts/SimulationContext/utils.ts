@@ -1,6 +1,7 @@
 // contexts/SimulationContext/utils.ts
 
 import {
+  Column,
   DataRow,
   ActionResult,
   SimulationResult,
@@ -17,6 +18,23 @@ export const newRowId = (): string =>
     ? crypto.randomUUID()
     : `row-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+export const newColumnId = (): string =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `col-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+/** Maps a column index after moving one column from `from` to `to` (same semantics as arrayMove). */
+export function remapColumnIndexAfterMove(
+  index: number,
+  from: number,
+  to: number
+): number {
+  if (index === from) return to;
+  if (from < to && index > from && index <= to) return index - 1;
+  if (from > to && index >= to && index < from) return index + 1;
+  return index;
+}
+
 /** @param idOverride optional stable id (e.g. {@link SIMULATION_DUMMY_ROW_ID}). */
 export const emptyRow = (columnCount: number, idOverride?: string): DataRow => ({
   id: idOverride ?? newRowId(),
@@ -32,6 +50,16 @@ export function ensureUserDataRowIds(userData: UserDataState): UserDataState {
     rows: userData.rows.map((row) => {
       const id = (row as DataRow & { id?: string }).id;
       return id != null && id !== "" ? row : { ...row, id: newRowId() };
+    }),
+  };
+}
+
+export function ensureColumnIds(userData: UserDataState): UserDataState {
+  return {
+    ...userData,
+    columns: userData.columns.map((col) => {
+      const id = (col as Column & { id?: string }).id;
+      return id != null && id !== "" ? col : { ...col, id: newColumnId() };
     }),
   };
 }

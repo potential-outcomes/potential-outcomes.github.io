@@ -1,6 +1,7 @@
 // contexts/SimulationContext/index.ts
 
 export { SimulationProvider, SimulationContext } from './SimulationProvider';
+export { SimulationUrlSync } from './SimulationUrlSync';
 
 export {
   useFullSimulationContext,
@@ -10,7 +11,8 @@ export {
   useSimulationResults,
   useSimulationHistory,
   useSimulationState,
-  useLatestStatisticBarRef
+  useLatestStatisticBarRef,
+  usePlotSettings,
 } from './hooks';
 
 export * from './actions';
@@ -20,6 +22,9 @@ export * from './types';
 export {
   emptyRow,
   newRowId,
+  newColumnId,
+  ensureColumnIds,
+  remapColumnIndexAfterMove,
   SIMULATION_DUMMY_ROW_ID,
   shuffleArray,
   filterValidRows,

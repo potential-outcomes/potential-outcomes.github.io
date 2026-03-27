@@ -4,6 +4,7 @@ import {
   SimulationState,
   PValueType,
   ExperimentalTestStatistic,
+  PlotThresholdDirection,
 } from "./types";
 import { newRowId } from "./utils";
 
@@ -27,8 +28,8 @@ const DEFAULT_USER_DATA = {
     },
   ],
   columns: [
-    { name: "Control", color: DEFAULT_COLUMN_COLORS[0] },
-    { name: "Treatment", color: DEFAULT_COLUMN_COLORS[1] },
+    { id: "col-default-0", name: "Control", color: DEFAULT_COLUMN_COLORS[0] },
+    { id: "col-default-1", name: "Treatment", color: DEFAULT_COLUMN_COLORS[1] },
   ],
   colorStack: DEFAULT_COLUMN_COLORS.slice(2),
   baselineColumn: 0,
@@ -45,6 +46,7 @@ export const INITIAL_STATE: SimulationState = {
     addRow: () => ({ success: false, error: "Not implemented" }),
     deleteRow: () => ({ success: false, error: "Not implemented" }),
     reorderRows: () => ({ success: false, error: "Not implemented" }),
+    reorderColumns: () => ({ success: false, error: "Not implemented" }),
     updateCell: () => ({ success: false, error: "Not implemented" }),
     setAssignment: () => ({ success: false, error: "Not implemented" }),
     setBlock: () => ({ success: false, error: "Not implemented" }),
@@ -67,6 +69,12 @@ export const INITIAL_STATE: SimulationState = {
     setTotalSimulations: () => ({ success: false, error: "Not implemented" }),
     setPValueType: () => ({ success: false, error: "Not implemented" }),
   },
+  plot: {
+    thresholdDirection: "geq" as PlotThresholdDirection,
+    thresholdInput: "",
+    setThresholdDirection: () => {},
+    setThresholdInput: () => {},
+  },
   control: {
     isSimulating: false,
     startSimulation: () => ({ success: false, error: "Not implemented" }),
@@ -88,4 +96,5 @@ export const INITIAL_STATE: SimulationState = {
   past: [],
   future: [],
   error: null,
+  hydrateFromUrl: () => {},
 };

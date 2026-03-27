@@ -14,6 +14,9 @@ import {
   validatePValueType,
   getCompleteRows,
   ensureUserDataRowIds,
+  ensureColumnIds,
+  newColumnId,
+  remapColumnIndexAfterMove,
 } from "./utils";
 import { ExperimentalTestStatistic, testStatistics } from "./testStatistics";
 import { INITIAL_STATE } from "./constants";
@@ -39,7 +42,9 @@ export const simulationReducer = (
       }
       return {
         ...state,
-        ...updateHistory(ensureUserDataRowIds(action.payload)),
+        ...updateHistory(
+          ensureColumnIds(ensureUserDataRowIds(action.payload))
+        ),
         error: null,
       };
 
@@ -129,6 +134,47 @@ export const simulationReducer = (
       return {
         ...state,
         ...updateHistory({ ...state.data.userData, rows: newRows }),
+        error: null,
+      };
+    }
+
+    case "REORDER_COLUMNS": {
+      const { activeIndex, overIndex } = action.payload;
+      const { columns, rows, baselineColumn } = state.data.userData;
+      if (columns.length < 2) {
+        return state;
+      }
+      if (
+        activeIndex < 0 ||
+        activeIndex >= columns.length ||
+        overIndex < 0 ||
+        overIndex >= columns.length
+      ) {
+        return {
+          ...state,
+          error: setError("Invalid column reorder indices"),
+        };
+      }
+      if (activeIndex === overIndex) {
+        return state;
+      }
+      const remap = (idx: number) =>
+        remapColumnIndexAfterMove(idx, activeIndex, overIndex);
+      const newColumns = arrayMove(columns, activeIndex, overIndex);
+      const newRows = rows.map((row) => ({
+        ...row,
+        data: arrayMove(row.data, activeIndex, overIndex),
+        assignment:
+          row.assignment === null ? null : remap(row.assignment),
+      }));
+      return {
+        ...state,
+        ...updateHistory({
+          ...state.data.userData,
+          columns: newColumns,
+          rows: newRows,
+          baselineColumn: remap(baselineColumn),
+        }),
         error: null,
       };
     }
@@ -261,7 +307,7 @@ export const simulationReducer = (
 
       const newColumns = [
         ...state.data.userData.columns,
-        { name: newColumnName, color: newColor },
+        { id: newColumnId(), name: newColumnName, color: newColor },
       ];
 
       let newState = {
@@ -605,6 +651,58 @@ export const simulationReducer = (
         past: [...state.past, state.data.userData],
         data: { ...state.data, userData: next },
         future: newFuture,
+        error: null,
+      };
+
+    case "HYDRATE_FROM_URL": {
+      const ensured = ensureColumnIds(
+        ensureUserDataRowIds(action.payload.userData)
+      );
+      return {
+        ...state,
+        data: { ...state.data, userData: ensured },
+        settings: {
+          ...state.settings,
+          simulationSpeed: action.payload.settings.simulationSpeed,
+          selectedTestStatistic: action.payload.settings.selectedTestStatistic,
+          totalSimulations: action.payload.settings.totalSimulations,
+          pValueType: action.payload.settings.pValueType,
+        },
+        plot: {
+          ...state.plot,
+          thresholdDirection: action.payload.plot.thresholdDirection,
+          thresholdInput: action.payload.plot.thresholdInput,
+        },
+        results: {
+          simulationResults: [],
+          pValue: null,
+          observedStatistic: null,
+          simulationDataSnapshot: null,
+        },
+        past: [],
+        future: [],
+        error: null,
+        control: { ...state.control, isSimulating: false },
+      };
+    }
+
+    case "SET_PLOT_THRESHOLD_DIRECTION":
+      return {
+        ...state,
+        plot: {
+          ...state.plot,
+          thresholdDirection: action.payload,
+        },
+        error: null,
+      };
+
+    case "SET_PLOT_THRESHOLD_INPUT":
+      return {
+        ...state,
+        plot: {
+          ...state.plot,
+          thresholdInput: action.payload,
+        },
         error: null,
       };
 

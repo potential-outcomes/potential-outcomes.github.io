@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
-import { SimulationProvider, useSimulationState } from "@/contexts/SimulationContext";
+import React, { Suspense } from "react";
+import {
+  SimulationProvider,
+  SimulationUrlSync,
+  useSimulationState,
+} from "@/contexts/SimulationContext";
 import DataInput from "@/components/DataInput/DataInput";
 import PlotDisplay from "@/components/PlotDisplay/PlotDisplay";
 import SimulationControls from "@/components/SimulationControls/SimulationControls";
@@ -76,6 +80,9 @@ const SimulationLayout: React.FC = () => {
 const SimulationPage: React.FC = () => {
   return (
     <SimulationProvider>
+      <Suspense fallback={null}>
+        <SimulationUrlSync />
+      </Suspense>
       <SimulationLayout />
     </SimulationProvider>
   );

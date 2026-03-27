@@ -7,6 +7,8 @@ import {
   PValueType,
   SimulationResult,
   UserDataSnapshot,
+  HydrateFromUrlPayload,
+  PlotThresholdDirection,
 } from "./types";
 
 export const setUserData = (userData: UserDataState): SimulationAction => ({
@@ -33,6 +35,11 @@ export const deleteRow = (index: number): SimulationAction => ({
 
 export const reorderRows = (activeIndex: number, overIndex: number): SimulationAction => ({
   type: "REORDER_ROWS",
+  payload: { activeIndex, overIndex },
+});
+
+export const reorderColumns = (activeIndex: number, overIndex: number): SimulationAction => ({
+  type: "REORDER_COLUMNS",
   payload: { activeIndex, overIndex },
 });
 
@@ -140,4 +147,23 @@ export const setSimulationDataSnapshot = (snapshot: UserDataSnapshot) => ({
 export const setBaselineColumn = (columnIndex: number) => ({
   type: "SET_BASELINE_COLUMN" as const,
   payload: columnIndex,
+});
+
+export const hydrateFromUrl = (
+  payload: HydrateFromUrlPayload
+): SimulationAction => ({
+  type: "HYDRATE_FROM_URL",
+  payload,
+});
+
+export const setPlotThresholdDirection = (
+  direction: PlotThresholdDirection
+): SimulationAction => ({
+  type: "SET_PLOT_THRESHOLD_DIRECTION",
+  payload: direction,
+});
+
+export const setPlotThresholdInput = (input: string): SimulationAction => ({
+  type: "SET_PLOT_THRESHOLD_INPUT",
+  payload: input,
 });
