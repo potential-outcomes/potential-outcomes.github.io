@@ -46,6 +46,8 @@ const InputCell: React.FC<InputCellProps> = ({
 }) => {
   const [placeholder, setPlaceholder] = useState("?");
   const [phantoms, setPhantoms] = useState<PhantomInstance[]>([]);
+  const [inputText, setInputText] = useState(value === null ? "" : String(value));
+  const isFocused = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const phantomIdRef = useRef(0);
   const spawnDelay = phantomDuration * 2;
@@ -57,6 +59,12 @@ const InputCell: React.FC<InputCellProps> = ({
 
     return () => clearTimeout(timer);
   }, [delayedPlaceholder]);
+
+  useEffect(() => {
+    if (!isFocused.current) {
+      setInputText(value === null ? "" : String(value));
+    }
+  }, [value]);
 
   const isInputUnobstructed = () => {
     if (inputRef.current) {
@@ -191,14 +199,28 @@ const InputCell: React.FC<InputCellProps> = ({
       <input
         ref={inputRef}
         type="text"
-        value={value === null ? "" : value}
+        value={inputText}
         onChange={(e) => {
           if (!disabled) {
             const text = e.target.value;
-            // Allow empty or valid numbers (including negative, decimals if needed)
             if (text === "" || /^-?\d*\.?\d*$/.test(text)) {
-              const newValue = text === "" ? null : Number(text);
-              onChange(newValue);
+              setInputText(text);
+            }
+          }
+        }}
+        onFocus={() => { isFocused.current = true; }}
+        onBlur={() => {
+          isFocused.current = false;
+          if (inputText === "" || inputText === "-") {
+            onChange(null);
+            setInputText("");
+          } else {
+            const num = Number(inputText);
+            if (!isNaN(num)) {
+              onChange(num);
+              setInputText(String(num));
+            } else {
+              setInputText(value === null ? "" : String(value));
             }
           }
         }}
