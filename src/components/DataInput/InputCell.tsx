@@ -211,7 +211,7 @@ const InputCell: React.FC<InputCellProps> = ({
         onFocus={() => { isFocused.current = true; }}
         onBlur={() => {
           isFocused.current = false;
-          if (inputText === "" || inputText === "-") {
+          if (inputText === "") {
             onChange(null);
             setInputText("");
           } else {
