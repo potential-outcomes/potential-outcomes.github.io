@@ -28,6 +28,14 @@ interface PhantomInstance {
   startPosition: { x: number; y: number };
 }
 
+/** `undefined` = incomplete draft; do not call parent onChange yet */
+function parseCommittableNumeric(text: string): number | null | undefined {
+  if (text === "") return null;
+  if (text === "-" || text === "." || text.endsWith(".")) return undefined;
+  const num = Number(text);
+  return Number.isFinite(num) ? num : undefined;
+}
+
 const InputCell: React.FC<InputCellProps> = ({
   value,
   onChange,
@@ -46,6 +54,8 @@ const InputCell: React.FC<InputCellProps> = ({
 }) => {
   const [placeholder, setPlaceholder] = useState("?");
   const [phantoms, setPhantoms] = useState<PhantomInstance[]>([]);
+  const [inputText, setInputText] = useState(value === null ? "" : String(value));
+  const isFocused = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const phantomIdRef = useRef(0);
   const spawnDelay = phantomDuration * 2;
@@ -57,6 +67,12 @@ const InputCell: React.FC<InputCellProps> = ({
 
     return () => clearTimeout(timer);
   }, [delayedPlaceholder]);
+
+  useEffect(() => {
+    if (!isFocused.current) {
+      setInputText(value === null ? "" : String(value));
+    }
+  }, [value]);
 
   const isInputUnobstructed = () => {
     if (inputRef.current) {
@@ -191,14 +207,32 @@ const InputCell: React.FC<InputCellProps> = ({
       <input
         ref={inputRef}
         type="text"
-        value={value === null ? "" : value}
+        value={inputText}
         onChange={(e) => {
           if (!disabled) {
             const text = e.target.value;
-            // Allow empty or valid numbers (including negative, decimals if needed)
             if (text === "" || /^-?\d*\.?\d*$/.test(text)) {
-              const newValue = text === "" ? null : Number(text);
-              onChange(newValue);
+              setInputText(text);
+              const committed = parseCommittableNumeric(text);
+              if (committed !== undefined) {
+                onChange(committed);
+              }
+            }
+          }
+        }}
+        onFocus={() => { isFocused.current = true; }}
+        onBlur={() => {
+          isFocused.current = false;
+          if (inputText === "") {
+            onChange(null);
+            setInputText("");
+          } else {
+            const num = Number(inputText);
+            if (!isNaN(num)) {
+              onChange(num);
+              setInputText(String(num));
+            } else {
+              setInputText(value === null ? "" : String(value));
             }
           }
         }}
