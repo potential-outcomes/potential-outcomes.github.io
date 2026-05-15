@@ -28,6 +28,14 @@ interface PhantomInstance {
   startPosition: { x: number; y: number };
 }
 
+/** `undefined` = incomplete draft; do not call parent onChange yet */
+function parseCommittableNumeric(text: string): number | null | undefined {
+  if (text === "") return null;
+  if (text === "-" || text === "." || text.endsWith(".")) return undefined;
+  const num = Number(text);
+  return Number.isFinite(num) ? num : undefined;
+}
+
 const InputCell: React.FC<InputCellProps> = ({
   value,
   onChange,
@@ -205,6 +213,10 @@ const InputCell: React.FC<InputCellProps> = ({
             const text = e.target.value;
             if (text === "" || /^-?\d*\.?\d*$/.test(text)) {
               setInputText(text);
+              const committed = parseCommittableNumeric(text);
+              if (committed !== undefined) {
+                onChange(committed);
+              }
             }
           }
         }}
