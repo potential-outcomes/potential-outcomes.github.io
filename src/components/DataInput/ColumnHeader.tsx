@@ -4,6 +4,48 @@ import { Icons } from "../common/Icons";
 import { Tooltip } from "../common/Tooltip";
 import "@/styles/globals.css";
 
+/** Character offset within `element`'s text for a viewport click, or null if unknown. */
+function getCaretCharacterOffsetWithin(
+  element: HTMLElement,
+  clientX: number,
+  clientY: number,
+): number | null {
+  const doc = element.ownerDocument;
+  let offsetNode: Node | null = null;
+  let offsetInNode = 0;
+
+  const caretPos = doc.caretPositionFromPoint?.(clientX, clientY);
+  if (caretPos?.offsetNode) {
+    offsetNode = caretPos.offsetNode;
+    offsetInNode = caretPos.offset;
+  } else {
+    const docWithLegacy = doc as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const range = docWithLegacy.caretRangeFromPoint?.(clientX, clientY);
+    if (range) {
+      offsetNode = range.startContainer;
+      offsetInNode = range.startOffset;
+    }
+  }
+
+  if (!offsetNode || offsetNode.nodeType !== Node.TEXT_NODE || !element.contains(offsetNode)) {
+    return null;
+  }
+
+  let total = 0;
+  const walker = doc.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    if (n === offsetNode) {
+      const textLen = n.textContent?.length ?? 0;
+      return Math.min(total + offsetInNode, textLen + total);
+    }
+    total += n.textContent?.length ?? 0;
+  }
+  return null;
+}
+
 export interface ColumnHeaderProps {
   isEditing: boolean;
   value: string;
@@ -42,8 +84,46 @@ export function ColumnHeader({
   onNavigation,
   sortableDragHandle,
 }: ColumnHeaderProps) {
-  const handleClick = (event: React.MouseEvent) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  /** Offset to place the caret when entering edit mode via label click; null = end of text. */
+  const pendingCaretRef = React.useRef<number | null>(null);
+  const wasEditingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      wasEditingRef.current = false;
+      return;
+    }
+    if (wasEditingRef.current) return;
+    wasEditingRef.current = true;
+
+    const input = inputRef.current;
+    if (!input) return;
+
+    const pending = pendingCaretRef.current;
+    pendingCaretRef.current = null;
+
+    const len = (input.value || "").length;
+    const pos = pending === null ? len : Math.max(0, Math.min(pending, len));
+
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(pos, pos);
+    });
+  }, [isEditing]);
+
+  const handleClick = (event: React.MouseEvent<HTMLSpanElement>) => {
     if (!disabled) {
+      if (value.length === 0) {
+        pendingCaretRef.current = 0;
+      } else {
+        const offset = getCaretCharacterOffsetWithin(
+          event.currentTarget,
+          event.clientX,
+          event.clientY,
+        );
+        pendingCaretRef.current = offset !== null ? offset : null;
+      }
       onClick();
     }
     event.preventDefault();
@@ -132,6 +212,7 @@ export function ColumnHeader({
       e.preventDefault();
       // Enter edit mode
       if (!disabled) {
+        pendingCaretRef.current = null;
         onClick();
       }
     }
@@ -177,6 +258,7 @@ export function ColumnHeader({
                 {value.length > 0 ? value : "\u00a0"}
               </span>
               <input
+                ref={inputRef}
                 type="text"
                 // Kill the HTML default (size 20) minimum width in all engines.
                 size={1}
@@ -186,7 +268,6 @@ export function ColumnHeader({
                 onKeyDown={handleKeyDown}
                 data-cell-id={`column-header-${columnIndex}`}
                 className={`col-start-1 row-start-1 w-full min-w-0 max-w-full bg-transparent px-0 font-inherit text-center border-b-2 focus:outline-none ${color}`}
-                autoFocus
                 disabled={disabled}
               />
             </div>
