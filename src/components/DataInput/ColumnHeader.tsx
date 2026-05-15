@@ -10,7 +10,13 @@ function getCaretCharacterOffsetWithin(
   clientX: number,
   clientY: number,
 ): number | null {
-  const doc = element.ownerDocument;
+  const doc = element.ownerDocument as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { offsetNode: Node | null; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
   let offsetNode: Node | null = null;
   let offsetInNode = 0;
 
@@ -19,10 +25,7 @@ function getCaretCharacterOffsetWithin(
     offsetNode = caretPos.offsetNode;
     offsetInNode = caretPos.offset;
   } else {
-    const docWithLegacy = doc as Document & {
-      caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    };
-    const range = docWithLegacy.caretRangeFromPoint?.(clientX, clientY);
+    const range = doc.caretRangeFromPoint?.(clientX, clientY);
     if (range) {
       offsetNode = range.startContainer;
       offsetInNode = range.startOffset;
