@@ -52,7 +52,7 @@ const InputCell: React.FC<InputCellProps> = ({
   showBlocks,
   onNavigation,
 }) => {
-  const [placeholder, setPlaceholder] = useState("?");
+  const [placeholder, setPlaceholder] = useState(delayedPlaceholder);
   const [phantoms, setPhantoms] = useState<PhantomInstance[]>([]);
   const [inputText, setInputText] = useState(value === null ? "" : String(value));
   const isFocused = useRef(false);
@@ -224,13 +224,17 @@ const InputCell: React.FC<InputCellProps> = ({
         onBlur={() => {
           isFocused.current = false;
           if (inputText === "") {
-            onChange(null);
             setInputText("");
+            if (value !== null) {
+              onChange(null);
+            }
           } else {
             const num = Number(inputText);
             if (!isNaN(num)) {
-              onChange(num);
               setInputText(String(num));
+              if (value !== num) {
+                onChange(num);
+              }
             } else {
               setInputText(value === null ? "" : String(value));
             }
