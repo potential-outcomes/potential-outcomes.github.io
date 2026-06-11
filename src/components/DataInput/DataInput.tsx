@@ -13,7 +13,6 @@ import {
   closestCenter,
   useSensor,
   useSensors,
-  type Modifier,
 } from "@dnd-kit/core";
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
@@ -49,30 +48,14 @@ import InputCell from "./InputCell";
 import { Flipper, Flipped } from "react-flip-toolkit";
 import { Tooltip } from "../common/Tooltip";
 
-/** Column DndContext only: horizontal axis; soft bounds with a little slack past the header row. */
-const COLUMN_DRAG_X_SLACK_PX = 40;
+/** Rows visible when collapsed (includes the trailing unactivated add row). */
+const COLLAPSED_VISIBLE_ROWS = 13;
+const COLLAPSE_TOP_ROWS = 6;
+const COLLAPSE_BOTTOM_ROWS = COLLAPSED_VISIBLE_ROWS - 1 - COLLAPSE_TOP_ROWS;
 
-const restrictToHorizontalAxis: Modifier = ({
-  transform,
-  activeNodeRect,
-  containerNodeRect,
-  draggingNodeRect,
-}) => {
-  const y = 0;
-  if (!activeNodeRect || !containerNodeRect) {
-    return { ...transform, y };
-  }
-
-  const dragWidth = draggingNodeRect?.width ?? activeNodeRect.width;
-  const minX = containerNodeRect.left - activeNodeRect.left;
-  const maxX = containerNodeRect.right - activeNodeRect.left - dragWidth;
-  const x = Math.min(
-    Math.max(transform.x, minX - COLUMN_DRAG_X_SLACK_PX),
-    maxX + COLUMN_DRAG_X_SLACK_PX,
-  );
-
-  return { ...transform, x, y };
-};
+function canCollapseRowList(length: number): boolean {
+  return length > COLLAPSED_VISIBLE_ROWS;
+}
 
 interface ColumnAveragesProps {
   averages: (number | null)[];
@@ -614,6 +597,12 @@ export default function DataInput() {
     dummyRowForSimulation,
   ]);
 
+  useEffect(() => {
+    if (!canCollapseRowList(dataToDisplay.length) && isCollapsed) {
+      setIsCollapsed(false);
+    }
+  }, [dataToDisplay.length, isCollapsed]);
+
   const duration = Math.min(speedToDuration(simulationSpeed) / 850, 0.5);
 
   // Check if animations should be disabled (when speed is at or above 80)
@@ -1028,10 +1017,13 @@ export default function DataInput() {
    *  vertical sort still animates it upward when dragging another row to the bottom. */
   const sortableItemIds = useMemo(() => {
     if (dataToDisplay.length <= 1) return [];
-    const shouldIgnoreCollapse = dataToDisplay.length <= 5;
-    if (isCollapsed && !shouldIgnoreCollapse && dataToDisplay.length > 5) {
+    if (isCollapsed && canCollapseRowList(dataToDisplay.length)) {
       const n = dataToDisplay.length;
-      return [dataToDisplay[0].id, dataToDisplay[1].id, dataToDisplay[n - 2].id];
+      const topIds = dataToDisplay.slice(0, COLLAPSE_TOP_ROWS).map((r) => r.id);
+      const bottomIds = dataToDisplay
+        .slice(n - 1 - COLLAPSE_BOTTOM_ROWS, n - 1)
+        .map((r) => r.id);
+      return [...topIds, ...bottomIds];
     }
     return dataToDisplay.slice(0, -1).map((r) => r.id);
   }, [dataToDisplay, isCollapsed]);
@@ -1116,28 +1108,31 @@ export default function DataInput() {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
       const movable = userData.rows.slice(0, -1);
-      const shouldIgnoreCollapse = dataToDisplay.length <= 5;
-      if (isCollapsed && !shouldIgnoreCollapse && movable.length >= 3) {
-        const subsetIds = [movable[0].id, movable[1].id, movable[movable.length - 1].id];
-        const oldIdx = subsetIds.indexOf(active.id as string);
-        const newIdx = subsetIds.indexOf(over.id as string);
-        if (oldIdx === -1 || newIdx === -1) return;
+      if (isCollapsed && canCollapseRowList(dataToDisplay.length)) {
+        if (movable.length >= COLLAPSE_TOP_ROWS + COLLAPSE_BOTTOM_ROWS) {
+          const topRows = movable.slice(0, COLLAPSE_TOP_ROWS);
+          const bottomRows = movable.slice(movable.length - COLLAPSE_BOTTOM_ROWS);
+          const subsetRows = [...topRows, ...bottomRows];
+          const subsetIds = subsetRows.map((r) => r.id);
+          const oldIdx = subsetIds.indexOf(active.id as string);
+          const newIdx = subsetIds.indexOf(over.id as string);
+          if (oldIdx === -1 || newIdx === -1) return;
 
-        // Mirror what dnd-kit previewed: arrayMove on the 3 visible rows only
-        const subsetRows = [movable[0], movable[1], movable[movable.length - 1]];
-        const newSubset = arrayMove(subsetRows, oldIdx, newIdx);
+          const newSubset = arrayMove(subsetRows, oldIdx, newIdx);
+          const newMovable = [...movable];
+          for (let i = 0; i < COLLAPSE_TOP_ROWS; i++) {
+            newMovable[i] = newSubset[i];
+          }
+          for (let i = 0; i < COLLAPSE_BOTTOM_ROWS; i++) {
+            newMovable[movable.length - COLLAPSE_BOTTOM_ROWS + i] = newSubset[COLLAPSE_TOP_ROWS + i];
+          }
 
-        // Assign the reordered subset back to their positions; hidden rows stay untouched
-        const newMovable = [...movable];
-        newMovable[0] = newSubset[0];
-        newMovable[1] = newSubset[1];
-        newMovable[movable.length - 1] = newSubset[2];
-
-        setUserData({
-          ...userData,
-          rows: [...newMovable, userData.rows[userData.rows.length - 1]],
-        });
-        return;
+          setUserData({
+            ...userData,
+            rows: [...newMovable, userData.rows[userData.rows.length - 1]],
+          });
+          return;
+        }
       }
       const movableIds = movable.map((r) => r.id);
       const oldIndex = movableIds.indexOf(active.id as string);
@@ -1149,8 +1144,6 @@ export default function DataInput() {
   );
 
   const renderRows = useMemo(() => {
-    const shouldIgnoreCollapse = dataToDisplay.length <= 5;
-
     const rowProps = {
       updateCell,
       setAssignment,
@@ -1178,14 +1171,17 @@ export default function DataInput() {
         index,
         isUnactivated: index === dataToDisplay.length - 1,
         toggleCollapse:
-          index === dataToDisplay.length - 1 ? () => setIsCollapsed(!isCollapsed) : undefined,
+          index === dataToDisplay.length - 1 && canCollapseRowList(dataToDisplay.length) ?
+            () => setIsCollapsed(!isCollapsed)
+          : undefined,
       };
 
       const isLast = index === dataToDisplay.length - 1;
       return <SortableTableRow key={row.id} {...common} sortableDisabled={isLast} />;
     });
 
-    if (isCollapsed && !shouldIgnoreCollapse) {
+    if (isCollapsed && canCollapseRowList(dataToDisplay.length)) {
+      const n = dataToDisplay.length;
       const expandButton = (
         <div
           key="expand-button"
@@ -1197,12 +1193,15 @@ export default function DataInput() {
             disabled={isSimulating}
           >
             <Icons.Expand size={4} />
-            <span>Expand {dataToDisplay.length - 4} hidden rows</span>
+            <span>Expand {dataToDisplay.length - COLLAPSED_VISIBLE_ROWS} hidden rows</span>
           </button>
         </div>
       );
 
-      rows = [rows[0], rows[1], expandButton, rows[rows.length - 2], rows[rows.length - 1]];
+      const topRows = rows.slice(0, COLLAPSE_TOP_ROWS);
+      const bottomStart = n - 1 - COLLAPSE_BOTTOM_ROWS;
+      const bottomRows = rows.slice(bottomStart, n - 1);
+      rows = [...topRows, expandButton, ...bottomRows, rows[n - 1]];
     }
 
     return rows;
@@ -1272,7 +1271,6 @@ export default function DataInput() {
             <DndContext
               sensors={columnSensors}
               collisionDetection={closestCenter}
-              modifiers={[restrictToHorizontalAxis]}
               onDragStart={handleColumnDragStart}
               onDragOver={handleColumnDragOver}
               onDragEnd={handleColumnDragEnd}
