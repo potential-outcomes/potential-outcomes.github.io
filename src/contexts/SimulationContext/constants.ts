@@ -15,6 +15,8 @@ export const DEFAULT_COLUMN_COLORS = [
   "text-blue-500",
   "text-yellow-500",
   "text-green-500",
+  "text-pink-500",
+  "text-orange-500",
 ];
 
 const DEFAULT_USER_DATA = {

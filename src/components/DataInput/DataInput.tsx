@@ -1232,6 +1232,8 @@ export default function DataInput() {
         <div className="bg-blue-500" />
         <div className="bg-yellow-500" />
         <div className="bg-green-500" />
+        <div className="bg-pink-500" />
+        <div className="bg-orange-500" />
       </div>
       <DataControls
         toggleBlocking={toggleBlockingColumn}
