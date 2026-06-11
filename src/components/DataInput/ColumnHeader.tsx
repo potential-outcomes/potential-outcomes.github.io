@@ -91,6 +91,20 @@ export function ColumnHeader({
   /** Offset to place the caret when entering edit mode via label click; null = end of text. */
   const pendingCaretRef = React.useRef<number | null>(null);
   const wasEditingRef = React.useRef(false);
+  /** Local draft while editing so the field can be emptied mid-edit; empty drafts are never
+   *  committed (the reducer rejects empty names) and revert to the committed name on blur. */
+  const [draft, setDraft] = React.useState(value);
+
+  React.useEffect(() => {
+    if (!isEditing) setDraft(value);
+  }, [isEditing, value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value);
+    if (e.target.value.trim() !== "") {
+      onChange(e);
+    }
+  };
 
   React.useEffect(() => {
     if (!isEditing) {
@@ -223,11 +237,12 @@ export function ColumnHeader({
 
   return (
     <div
-      className={`relative flex h-full min-w-0 items-center justify-center px-6 ${color} ${
+      className={`relative flex h-full min-w-0 items-center justify-center px-2 ${color} ${
         disabled ? "opacity-90" : ""
       }`}
     >
-      {/* Match InputCell horizontal inset; cluster grip + label (no flex-1 gap from full-width row). */}
+      {/* Tighter inset than InputCell (px-6): the grip + delete button already eat into the
+          available width, so give the label as much room as possible before truncating. */}
       <div
         className={
           "inline-flex w-fit max-w-full min-w-0 items-center gap-1"
@@ -258,15 +273,16 @@ export function ColumnHeader({
                 className={`invisible col-start-1 row-start-1 whitespace-pre text-center ${color}`}
                 aria-hidden
               >
-                {value.length > 0 ? value : "\u00a0"}
+                {draft.length > 0 ? draft : "\u00a0"}
               </span>
               <input
                 ref={inputRef}
                 type="text"
                 // Kill the HTML default (size 20) minimum width in all engines.
                 size={1}
-                value={value}
-                onChange={onChange}
+                maxLength={20}
+                value={draft}
+                onChange={handleChange}
                 onBlur={onBlur}
                 onKeyDown={handleKeyDown}
                 data-cell-id={`column-header-${columnIndex}`}
