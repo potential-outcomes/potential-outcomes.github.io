@@ -355,26 +355,47 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
     // Step 3: Split into columns and remove header if present
     let startIndex = 0;
-    const firstLineTokens = lines[0].split(delimiter);
-    if (
-      firstLineTokens.every(
-        (item) => item.trim().length > 0 && isNaN(parseFloat(item))
-      )
-    ) {
+    const firstLineTokens = lines[0].split(delimiter).map((t) => t.trim());
+    const hasHeader = firstLineTokens.every(
+      (item) => item.length > 0 && isNaN(parseFloat(item))
+    );
+    if (hasHeader) {
       startIndex = 1;
     }
+
+    // Two columns (assignment and value), or three with an optional block
+    // column: the one headed "block" (in any case) if there is a header,
+    // otherwise the first column. A block column turns blocking on.
+    const numTokens = firstLineTokens.length;
+    if (numTokens !== 2 && numTokens !== 3) {
+      throw new Error(`Invalid line format: ${lines[0]}`);
+    }
+    let blockColumnIndex: number | null = null;
+    if (numTokens === 3) {
+      const headerIndex = hasHeader
+        ? firstLineTokens.findIndex((t) => t.toLowerCase() === "block")
+        : -1;
+      blockColumnIndex = headerIndex !== -1 ? headerIndex : 0;
+    }
+    const dataTokenIndices = [0, 1, 2]
+      .slice(0, numTokens)
+      .filter((i) => i !== blockColumnIndex);
 
     // Step 4: Parse all lines into columns
     const rawColumns: string[][] = Array(2)
       .fill(null)
       .map(() => []);
+    const blocks: (string | null)[] = [];
     lines.slice(startIndex).forEach((line) => {
       const tokens = line.split(delimiter).map((t) => t.trim());
-      if (tokens.length !== 2) {
+      if (tokens.length !== numTokens) {
         throw new Error(`Invalid line format: ${line}`);
       }
-      rawColumns[0].push(tokens[0]);
-      rawColumns[1].push(tokens[1]);
+      rawColumns[0].push(tokens[dataTokenIndices[0]]);
+      rawColumns[1].push(tokens[dataTokenIndices[1]]);
+      blocks.push(
+        blockColumnIndex === null ? null : tokens[blockColumnIndex] || null
+      );
     });
 
     // Step 5: Analyze columns to determine which is assignment and which is value
@@ -416,10 +437,9 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
     }
 
     // Step 7: Create parsed data structure
-    const parsedLines = lines.slice(startIndex).map((line) => {
-      const tokens = line.split(delimiter).map((t) => t.trim());
-      const assignment = tokens[assignmentColumnIndex];
-      const valueStr = tokens[valueColumnIndex];
+    const parsedLines = rawColumns[0].map((_, lineIndex) => {
+      const assignment = rawColumns[assignmentColumnIndex][lineIndex];
+      const valueStr = rawColumns[valueColumnIndex][lineIndex];
       const value = parseFloat(valueStr);
 
       if (isNaN(value)) {
@@ -464,7 +484,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
         id: newRowId(),
         data,
         assignment,
-        block: null,
+        block: blocks[index],
         assignmentOriginalIndex: index,
       };
     });
@@ -491,7 +511,7 @@ export const SimulationProvider: React.FC<React.PropsWithChildren<{}>> = ({
       columns,
       colorStack: defaultColors.slice(columns.length),
       baselineColumn: 0,
-      blockingEnabled: false,
+      blockingEnabled: blockColumnIndex !== null,
     };
   };
 
